@@ -14,9 +14,22 @@ final class ViewController: UIViewController, ARSessionDelegate {
     private let isUIEnabled = true
     private let confidenceControl = UISegmentedControl(items: ["Low", "Medium", "High"])
     private let rgbRadiusSlider = UISlider()
+    private let rosConnectedBtn = UIButton()
+    private var isRosConnected = false
+    private var controlsButtonImages: (hide: UIImage, show: UIImage)?
+    private let controlsButton = UIButton()
+    private var isControlsViewEnabled = true
     
-    private let session = ARSession()
+    private var session = ARSession()
     private var renderer: Renderer!
+    
+    private var rosControllerViewProvider: RosControllerViewProvider!
+    private var pubController: PubController!
+    
+    public func setPubManager(pubManager: PubManager) {
+        self.pubController = pubManager.pubController
+        self.session = pubManager.session
+    }
     
     override func viewDidLoad() {
         super.viewDidLoad()
@@ -55,27 +68,42 @@ final class ViewController: UIViewController, ARSessionDelegate {
         rgbRadiusSlider.value = renderer.rgbRadius
         rgbRadiusSlider.addTarget(self, action: #selector(viewValueChanged), for: .valueChanged)
         
-        let stackView = UIStackView(arrangedSubviews: [confidenceControl, rgbRadiusSlider])
+        // ROS Connected Button
+        let iconHide = UIImage(systemName: "gearshape", withConfiguration: UIImage.SymbolConfiguration(scale: .large))!.withTintColor(UIColor(white: 1.0, alpha: 0.5), renderingMode: .alwaysOriginal)
+        let iconShow = UIImage(systemName: "gearshape.fill", withConfiguration: UIImage.SymbolConfiguration(scale: .large))!.withTintColor(UIColor(white: 1.0, alpha: 0.5), renderingMode: .alwaysOriginal)
+        self.controlsButtonImages = (hide: iconHide, show: iconShow)
+        self.controlsButton.setImage(self.controlsButtonImages!.hide, for: .normal)
+        self.controlsButton.addTarget(self, action: #selector(controlsButtonPressed), for: .touchUpInside)
+        self.controlsButton.translatesAutoresizingMaskIntoConstraints = false
+        
+        self.rosControllerViewProvider = RosControllerViewProvider(pubController: self.pubController!, session: self.session)
+        
+        let stackView = UIStackView(arrangedSubviews: [rosControllerViewProvider.view!, confidenceControl, rgbRadiusSlider])
         stackView.isHidden = !isUIEnabled
         stackView.translatesAutoresizingMaskIntoConstraints = false
         stackView.axis = .vertical
         stackView.spacing = 20
+        
         view.addSubview(stackView)
+        view.addSubview(controlsButton)
+        
         NSLayoutConstraint.activate([
             stackView.centerXAnchor.constraint(equalTo: view.centerXAnchor),
-            stackView.bottomAnchor.constraint(equalTo: view.bottomAnchor, constant: -50)
+            stackView.bottomAnchor.constraint(equalTo: view.bottomAnchor, constant: -50),
+            self.controlsButton.bottomAnchor.constraint(equalTo: self.view.bottomAnchor, constant: -30),
+            self.controlsButton.leftAnchor.constraint(equalTo: self.view.leftAnchor, constant: 30),
         ])
         
-        // Setup a save button
-        let button = UIButton(type: .system, primaryAction: UIAction(title: "Save", handler: { (action) in
-            self.renderer.savePointsToFile()
-        }))
-        button.translatesAutoresizingMaskIntoConstraints = false
-        self.view.addSubview(button)
-        NSLayoutConstraint.activate([
-            button.centerXAnchor.constraint(equalTo: self.view.centerXAnchor),
-            button.centerYAnchor.constraint(equalTo: self.view.centerYAnchor)
-        ])
+//        // Setup a save button
+//        let button = UIButton(type: .system, primaryAction: UIAction(title: "Save", handler: { (action) in
+//            self.renderer.savePointsToFile()
+//        }))
+//        button.translatesAutoresizingMaskIntoConstraints = false
+//        self.view.addSubview(button)
+//        NSLayoutConstraint.activate([
+//            button.centerXAnchor.constraint(equalTo: self.view.centerXAnchor),
+//            button.centerYAnchor.constraint(equalTo: self.view.centerYAnchor)
+//        ])
     
     }
     
@@ -92,6 +120,12 @@ final class ViewController: UIViewController, ARSessionDelegate {
         
         // The screen shouldn't dim during AR experiences.
         UIApplication.shared.isIdleTimerDisabled = true
+    }
+    
+    @objc
+    private func controlsButtonPressed() {
+        // Just invert current state, update view and button
+        self.isControlsViewEnabled = !self.isControlsViewEnabled
     }
     
     @objc

@@ -12,6 +12,7 @@ import ARKit
 class AppDelegate: UIResponder, UIApplicationDelegate {
 
     var window: UIWindow?
+    private var pubManager: PubManager!
 
     func application(_ application: UIApplication, didFinishLaunchingWithOptions launchOptions: [UIApplication.LaunchOptionsKey: Any]?) -> Bool {
         if !ARWorldTrackingConfiguration.supportsFrameSemantics(.sceneDepth) {
@@ -19,8 +20,12 @@ class AppDelegate: UIResponder, UIApplicationDelegate {
             //  an error-message view controller, if not.
             let storyboard = UIStoryboard(name: "Main", bundle: nil)
             window?.rootViewController = storyboard.instantiateViewController(withIdentifier: "unsupportedDeviceMessage")
+        }else
+        {
+            self.pubManager = PubManager()
+            (window?.rootViewController as! ViewController).setPubManager(pubManager: self.pubManager)
+            self.pubManager.start()
         }
         return true
     }
 }
-

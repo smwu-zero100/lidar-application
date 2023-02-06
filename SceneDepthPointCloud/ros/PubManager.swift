@@ -9,7 +9,6 @@
 import Foundation
 import ARKit
 import OSLog
-
 /// Class that manages and instigates the publishing.
 ///
 /// The actual work is done in a background thread.
@@ -25,6 +24,8 @@ final class PubManager {
     private var pubDepth: ControlledPublisher
     private var pubPointCloud: ControlledPublisher
     private var pubCamera: ControlledPublisher
+    
+    var centroids = [vector_float3]()
     
     public init() {
         /// Create controlled pub objects for all publishers
@@ -103,16 +104,22 @@ final class PubManager {
     
     private func publishPointCloud() {
         guard let currentFrame = self.session.currentFrame,
-              let pointCloud = currentFrame.rawFeaturePoints?.points else {
+              var pointCloud = currentFrame.rawFeaturePoints?.points else {
                 return
         }
         // clustering code 예정
         
+        centroids = initAndClustering(points: pointCloud)
+        
+        centroids.forEach { (point) in
+            pointCloud.append(point)
+        }
         
         let timestamp = currentFrame.timestamp
         self.pubPointCloud.publish(RosMessagesUtils.pointsToPointCloud2(time: timestamp, points: pointCloud))
     }
     
+   
 //    private func publishCamera() {
 //        guard let currentFrame = self.session.currentFrame else {
 //            return

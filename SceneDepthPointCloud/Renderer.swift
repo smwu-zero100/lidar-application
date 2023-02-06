@@ -131,6 +131,10 @@ final class Renderer {
     func drawRectResized(size: CGSize) {
         viewportSize = size
     }
+    
+    func addPoint(points: [vector_float3]) {
+        
+    }
    
     private func updateCapturedImageTextures(frame: ARFrame) {
         // Create two textures (Y and CbCr) from the provided frame's captured image
@@ -222,6 +226,7 @@ final class Renderer {
         renderEncoder.setVertexBuffer(particlesBuffer)
         renderEncoder.drawPrimitives(type: .point, vertexStart: 0, vertexCount: currentPointCount)
         renderEncoder.endEncoding()
+        
             
         commandBuffer.present(renderDestination.currentDrawable!)
         commandBuffer.commit()

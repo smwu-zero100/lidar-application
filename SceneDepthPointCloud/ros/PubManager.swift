@@ -8,6 +8,7 @@
 
 import Foundation
 import ARKit
+import CoreLocation
 import OSLog
 /// Class that manages and instigates the publishing.
 ///
@@ -17,6 +18,7 @@ final class PubManager {
     
     public let session = ARSession()
     public let pubController: PubController
+    public let locationManager = CLLocationManager()
     private let interface = RosInterface()
     
     private var pubTf: ControlledStaticPublisher
@@ -24,17 +26,20 @@ final class PubManager {
     private var pubDepth: ControlledPublisher
     private var pubPointCloud: ControlledPublisher
     private var pubCamera: ControlledPublisher
+    private var pubLocation : ControlledPublisher
     
     var centroids = [vector_float3]()
     
     public init() {
         /// Create controlled pub objects for all publishers
+        // hello boin
         self.pubTf = ControlledStaticPublisher(interface: self.interface, type: tf2_msgs__TFMessage.self, topicName: "/tf")
         // FIXME: using /tf only for now because /tf_static does not seem to work
         // self.pubTfStatic = ControlledStaticPublisher(interface: self.interface, type: tf2_msgs__TFMessage.self, topicName: "/tf")
         self.pubDepth = ControlledPublisher(interface: self.interface, type: sensor_msgs__Image.self)
         self.pubPointCloud = ControlledPublisher(interface: self.interface, type: sensor_msgs__PointCloud2.self)
         self.pubCamera = ControlledPublisher(interface: self.interface, type: sensor_msgs__Image.self)
+        self.pubLocation = ControlledPublisher(interface: self.interface, type: sensor_msgs__NavSatFix.self)
         
         let controlledPubs: [PubController.PubType: [ControlledPublisher]] = [
             //.transforms: [self.pubTf, self.pubTfStatic],
@@ -42,6 +47,7 @@ final class PubManager {
             .depth: [self.pubDepth],
             .pointCloud: [self.pubPointCloud],
             .camera: [self.pubCamera],
+            .location : [self.pubLocation]
         ]
         self.pubController = PubController(pubs: controlledPubs, interface: self.interface)
     }
@@ -76,6 +82,8 @@ final class PubManager {
         self.startPubThread(id: "pointcloud", pubType: .pointCloud, publishFunc: self.publishPointCloud)
         // TODO fix/implement
         // self.startPubThread(id: "camera", pubType: .camera, publishFunc: self.publishCamera)
+        
+       // self.startPubThread(id: "location", pubType: .location, publishFunc: self.publishLocation)
     }
     
     private func publishTf() {
@@ -118,6 +126,35 @@ final class PubManager {
         let timestamp = currentFrame.timestamp
         self.pubPointCloud.publish(RosMessagesUtils.pointsToPointCloud2(time: timestamp, points: pointCloud))
     }
+//
+//    private func publishLocation(){
+//
+//        // location 데이터 받아오는지 잘 모르겠음!!!!!!!!!
+//
+//        guard let currentlocation = self.locationManager else{
+//            return
+//        }
+//
+//        if let location = locations.last{
+//            let lat = location.coordinate.latitude
+//            let lon = location.coordinate.longitude
+//
+//            self.pubLocation.publish(RosMsgUtils.locationToNavsatFix(time: timestamp, location: locations))
+//        }
+//    }
+        
+//    public func locationManager(_ manager: CLLocationManager, didUpdateLocations locations: [CLLocation]) {
+//            if let location = locations.last {
+//                let lat = location.coordinate.latitude
+//                let lon = location.coordinate.longitude
+//                print("\(lat), \(lon)")
+//            }
+//        }
+//
+//    func locationManager(_ manager: CLLocationManager, didFailWithError error: Error) {
+//            print(error)
+//        }
+//
     
    
 //    private func publishCamera() {

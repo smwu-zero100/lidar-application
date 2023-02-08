@@ -165,3 +165,18 @@ final class RosMessagesUtils {
         return rotY * rotZ
     }
 }
+
+
+// location 데이터를 NavSatFix 로 변환
+// latitude, longitude 데이터를 어떻게 ViewController 에서 가져와야할 지 모르게따!!!
+
+//    public static func locationToNavsatFix(time : Double, location:[CLLocationDegrees]) -> sensor_msgs__NavSatFix{
+//        let header = std_msgs__Header(stamp: getTimeStamp(time), frame_id: "location")
+//        let status = sensor_msgs__NavSatStatus(status: 0, service: 1)
+//        let latitude =
+//        let longitude =
+//        let altitude =
+//    }
+// }
+    
+

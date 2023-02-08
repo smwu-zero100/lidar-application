@@ -9,8 +9,12 @@ import UIKit
 import Metal
 import MetalKit
 import ARKit
+import CoreLocation
 
-final class ViewController: UIViewController, ARSessionDelegate {
+final class ViewController: UIViewController, ARSessionDelegate, CLLocationManagerDelegate {
+    
+    private let locationManager = CLLocationManager()
+    
     private let isUIEnabled = true
     private let confidenceControl = UISegmentedControl(items: ["Low", "Medium", "High"])
     private let rgbRadiusSlider = UISlider()
@@ -40,6 +44,11 @@ final class ViewController: UIViewController, ARSessionDelegate {
         }
         
         session.delegate = self
+        locationManager.delegate = self
+        locationManager.desiredAccuracy = kCLLocationAccuracyBest
+        locationManager.requestWhenInUseAuthorization()
+        locationManager.pausesLocationUpdatesAutomatically = false
+        locationManager.startUpdatingLocation()
         
         // Set the view to use the default device
         if let view = view as? MTKView {
@@ -175,6 +184,18 @@ final class ViewController: UIViewController, ARSessionDelegate {
             alertController.addAction(restartAction)
             self.present(alertController, animated: true, completion: nil)
         }
+    }
+    
+    public func locationManager(_ manager: CLLocationManager, didUpdateLocations locations: [CLLocation]) {
+        if let location = locations.last {
+            let lat = location.coordinate.latitude
+            let lon = location.coordinate.longitude
+            print("\(lat), \(lon)")
+        }
+    }
+    
+    func locationManager(_ manager: CLLocationManager, didFailWithError error: Error) {
+        print(error)
     }
 }
 

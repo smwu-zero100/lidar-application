@@ -18,6 +18,7 @@ final class PubController {
         case depth
         case pointCloud
         case camera
+        case location
     }
     public static let defaultRate = 10.0
     
@@ -37,7 +38,8 @@ final class PubController {
             .transforms: 15.0,
             .depth: PubController.defaultRate,
             .pointCloud: PubController.defaultRate,
-            .camera: PubController.defaultRate
+            .camera: PubController.defaultRate,
+            .location: PubController.defaultRate
         ]
     }
     

@@ -23,7 +23,7 @@ struct RosbridgeMsg<T> : Encodable where T : Encodable {
 /// Handles websocket connection and sending data.
 final class RosInterface {
     private static let REGEX_URL = "^\\d{1,3}\\.\\d{1,3}\\.\\d{1,3}\\.\\d{1,3}:\\d{2,4}$"
-    private let urlStr = "10.101.6.23:9090"
+    private let urlStr = "192.168.0.abc:xyz"
     
     private var logger = Logger(subsystem: "com.cherrrity.zero-lidar-logger", category: "RosInterface")
     
@@ -63,6 +63,8 @@ final class RosInterface {
         self.socket?.resume()
         
         self.isConnected = true
+        
+        print("*********** connect suceed : \(fullUrl)****************")
         return true
     }
     

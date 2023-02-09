@@ -83,7 +83,7 @@ final class PubManager {
         // TODO fix/implement
         // self.startPubThread(id: "camera", pubType: .camera, publishFunc: self.publishCamera)
         
-       // self.startPubThread(id: "location", pubType: .location, publishFunc: self.publishLocation)
+        self.startPubThread(id: "location", pubType: .location, publishFunc: self.publishLocation)
     }
     
     private func publishTf() {
@@ -136,6 +136,7 @@ final class PubManager {
             return
         }
         let locations = [currentlocation.coordinate.latitude, currentlocation.coordinate.longitude]
+        print(locations)
         let timestamp = currentFrame.timestamp
         
         self.pubLocation.publish(RosMessagesUtils.locationToNavsatFix(time: timestamp, location: locations))

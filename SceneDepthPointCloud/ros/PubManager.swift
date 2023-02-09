@@ -126,36 +126,22 @@ final class PubManager {
         let timestamp = currentFrame.timestamp
         self.pubPointCloud.publish(RosMessagesUtils.pointsToPointCloud2(time: timestamp, points: pointCloud))
     }
-//
-//    private func publishLocation(){
-//
-//        // location 데이터 받아오는지 잘 모르겠음!!!!!!!!!
-//
-//        guard let currentlocation = self.locationManager else{
-//            return
-//        }
-//
-//        if let location = locations.last{
-//            let lat = location.coordinate.latitude
-//            let lon = location.coordinate.longitude
-//
-//            self.pubLocation.publish(RosMsgUtils.locationToNavsatFix(time: timestamp, location: locations))
-//        }
-//    }
+
+    private func publishLocation(){
+
+        // location 데이터 받아오는지 잘 모르겠음!!!!!!!!!
+
+        guard let currentlocation = self.locationManager.location,
+              let currentFrame = self.session.currentFrame else{
+            return
+        }
+        let locations = [currentlocation.coordinate.latitude, currentlocation.coordinate.longitude]
+        let timestamp = currentFrame.timestamp
         
-//    public func locationManager(_ manager: CLLocationManager, didUpdateLocations locations: [CLLocation]) {
-//            if let location = locations.last {
-//                let lat = location.coordinate.latitude
-//                let lon = location.coordinate.longitude
-//                print("\(lat), \(lon)")
-//            }
-//        }
-//
-//    func locationManager(_ manager: CLLocationManager, didFailWithError error: Error) {
-//            print(error)
-//        }
-//
-    
+        self.pubLocation.publish(RosMessagesUtils.locationToNavsatFix(time: timestamp, location: locations))
+    }
+}
+
    
 //    private func publishCamera() {
 //        guard let currentFrame = self.session.currentFrame else {
@@ -165,4 +151,4 @@ final class PubManager {
 //        let cameraImage = currentFrame.capturedImage
 //        self.pubCamera.publish(RosMessagesUtils.pixelBufferToImage(time: time, pixelBuffer: cameraImage))
 //    }
-}
+

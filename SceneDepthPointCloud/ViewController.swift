@@ -13,8 +13,6 @@ import CoreLocation
 
 final class ViewController: UIViewController, ARSessionDelegate, CLLocationManagerDelegate {
     
-    private let locationManager = CLLocationManager()
-    
     private let isUIEnabled = true
     private let confidenceControl = UISegmentedControl(items: ["Low", "Medium", "High"])
     private let rgbRadiusSlider = UISlider()
@@ -25,6 +23,7 @@ final class ViewController: UIViewController, ARSessionDelegate, CLLocationManag
     private var isControlsViewEnabled = true
     
     private var session = ARSession()
+    private var locationManager = CLLocationManager()
     private var renderer: Renderer!
     
     private var rosControllerViewProvider: RosControllerViewProvider!
@@ -33,6 +32,7 @@ final class ViewController: UIViewController, ARSessionDelegate, CLLocationManag
     public func setPubManager(pubManager: PubManager) {
         self.pubController = pubManager.pubController
         self.session = pubManager.session
+        self.locationManager = pubManager.locationManager
     }
     
     override func viewDidLoad() {

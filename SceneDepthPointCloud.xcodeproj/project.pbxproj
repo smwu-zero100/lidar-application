@@ -17,6 +17,13 @@
 		681783532988EB5D009F6AF9 /* RosControllerViewProvider.swift in Sources */ = {isa = PBXBuildFile; fileRef = 681783522988EB5D009F6AF9 /* RosControllerViewProvider.swift */; };
 		681783552988F4F4009F6AF9 /* PubManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = 681783542988F4F4009F6AF9 /* PubManager.swift */; };
 		68178357298A3BCF009F6AF9 /* Kmeans.swift in Sources */ = {isa = PBXBuildFile; fileRef = 68178356298A3BCF009F6AF9 /* Kmeans.swift */; };
+		68DF6A8F299604B7008BB706 /* YOLOv3Tiny.mlmodel in Sources */ = {isa = PBXBuildFile; fileRef = 68DF6A8E299604B7008BB706 /* YOLOv3Tiny.mlmodel */; };
+		68DF6A91299604CC008BB706 /* ObjectDetector.mlmodel in Sources */ = {isa = PBXBuildFile; fileRef = 68DF6A90299604CB008BB706 /* ObjectDetector.mlmodel */; };
+		68DF6A95299609AA008BB706 /* yolov5.mlmodel in Sources */ = {isa = PBXBuildFile; fileRef = 68DF6A92299609A7008BB706 /* yolov5.mlmodel */; };
+		68DF6A96299609AA008BB706 /* yolov5_Int8.mlmodel in Sources */ = {isa = PBXBuildFile; fileRef = 68DF6A93299609A8008BB706 /* yolov5_Int8.mlmodel */; };
+		68DF6A97299609AA008BB706 /* yolov5_FP16.mlmodel in Sources */ = {isa = PBXBuildFile; fileRef = 68DF6A94299609AA008BB706 /* yolov5_FP16.mlmodel */; };
+		68DF6A9D29965117008BB706 /* YOLOv3TinyInt8LUT.mlmodel in Sources */ = {isa = PBXBuildFile; fileRef = 68DF6A9C29965117008BB706 /* YOLOv3TinyInt8LUT.mlmodel */; };
+		68DF6A9F29965124008BB706 /* MobileNetV2Int8LUT.mlmodel in Sources */ = {isa = PBXBuildFile; fileRef = 68DF6A9E29965124008BB706 /* MobileNetV2Int8LUT.mlmodel */; };
 		E73DD13124636FEF00D77039 /* AppDelegate.swift in Sources */ = {isa = PBXBuildFile; fileRef = E73DD13024636FEF00D77039 /* AppDelegate.swift */; };
 		E73DD13324636FEF00D77039 /* Shaders.metal in Sources */ = {isa = PBXBuildFile; fileRef = E73DD13224636FEF00D77039 /* Shaders.metal */; };
 		E73DD13624636FEF00D77039 /* Renderer.swift in Sources */ = {isa = PBXBuildFile; fileRef = E73DD13524636FEF00D77039 /* Renderer.swift */; };
@@ -39,6 +46,13 @@
 		681783522988EB5D009F6AF9 /* RosControllerViewProvider.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RosControllerViewProvider.swift; sourceTree = "<group>"; };
 		681783542988F4F4009F6AF9 /* PubManager.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PubManager.swift; sourceTree = "<group>"; };
 		68178356298A3BCF009F6AF9 /* Kmeans.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Kmeans.swift; sourceTree = "<group>"; };
+		68DF6A8E299604B7008BB706 /* YOLOv3Tiny.mlmodel */ = {isa = PBXFileReference; lastKnownFileType = file.mlmodel; path = YOLOv3Tiny.mlmodel; sourceTree = "<group>"; };
+		68DF6A90299604CB008BB706 /* ObjectDetector.mlmodel */ = {isa = PBXFileReference; lastKnownFileType = file.mlmodel; path = ObjectDetector.mlmodel; sourceTree = "<group>"; };
+		68DF6A92299609A7008BB706 /* yolov5.mlmodel */ = {isa = PBXFileReference; lastKnownFileType = file.mlmodel; path = yolov5.mlmodel; sourceTree = "<group>"; };
+		68DF6A93299609A8008BB706 /* yolov5_Int8.mlmodel */ = {isa = PBXFileReference; lastKnownFileType = file.mlmodel; path = yolov5_Int8.mlmodel; sourceTree = "<group>"; };
+		68DF6A94299609AA008BB706 /* yolov5_FP16.mlmodel */ = {isa = PBXFileReference; lastKnownFileType = file.mlmodel; path = yolov5_FP16.mlmodel; sourceTree = "<group>"; };
+		68DF6A9C29965117008BB706 /* YOLOv3TinyInt8LUT.mlmodel */ = {isa = PBXFileReference; lastKnownFileType = file.mlmodel; path = YOLOv3TinyInt8LUT.mlmodel; sourceTree = "<group>"; };
+		68DF6A9E29965124008BB706 /* MobileNetV2Int8LUT.mlmodel */ = {isa = PBXFileReference; lastKnownFileType = file.mlmodel; path = MobileNetV2Int8LUT.mlmodel; sourceTree = "<group>"; };
 		948146554F46E56B015690CC /* SampleCode.xcconfig */ = {isa = PBXFileReference; lastKnownFileType = text.xcconfig; name = SampleCode.xcconfig; path = Configuration/SampleCode.xcconfig; sourceTree = "<group>"; };
 		B57D60B9736905755DECF7CE /* README.md */ = {isa = PBXFileReference; lastKnownFileType = net.daringfireball.markdown; path = README.md; sourceTree = "<group>"; };
 		E73DD12D24636FEF00D77039 /* Point Cloud.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = "Point Cloud.app"; sourceTree = BUILT_PRODUCTS_DIR; };
@@ -92,6 +106,20 @@
 			path = msg;
 			sourceTree = "<group>";
 		};
+		68DF6A8D2996048D008BB706 /* mlmodel */ = {
+			isa = PBXGroup;
+			children = (
+				68DF6A94299609AA008BB706 /* yolov5_FP16.mlmodel */,
+				68DF6A93299609A8008BB706 /* yolov5_Int8.mlmodel */,
+				68DF6A9C29965117008BB706 /* YOLOv3TinyInt8LUT.mlmodel */,
+				68DF6A9E29965124008BB706 /* MobileNetV2Int8LUT.mlmodel */,
+				68DF6A92299609A7008BB706 /* yolov5.mlmodel */,
+				68DF6A90299604CB008BB706 /* ObjectDetector.mlmodel */,
+				68DF6A8E299604B7008BB706 /* YOLOv3Tiny.mlmodel */,
+			);
+			path = mlmodel;
+			sourceTree = "<group>";
+		};
 		A6415A999BE1C768F18B2649 /* Configuration */ = {
 			isa = PBXGroup;
 			children = (
@@ -130,6 +158,7 @@
 		E73DD12F24636FEF00D77039 /* SceneDepthPointCloud */ = {
 			isa = PBXGroup;
 			children = (
+				68DF6A8D2996048D008BB706 /* mlmodel */,
 				681783422988C12F009F6AF9 /* ros */,
 				E73DD13024636FEF00D77039 /* AppDelegate.swift */,
 				E73DD13724636FEF00D77039 /* ViewController.swift */,
@@ -221,14 +250,21 @@
 			files = (
 				681783472988C199009F6AF9 /* RosMessages.swift in Sources */,
 				681783442988C15F009F6AF9 /* PubController.swift in Sources */,
+				68DF6A97299609AA008BB706 /* yolov5_FP16.mlmodel in Sources */,
 				6817834F2988C240009F6AF9 /* RosInterface.swift in Sources */,
+				68DF6A96299609AA008BB706 /* yolov5_Int8.mlmodel in Sources */,
 				E73DD13324636FEF00D77039 /* Shaders.metal in Sources */,
 				E7B7223D24809D1E002E43E8 /* Helpers.swift in Sources */,
+				68DF6A9D29965117008BB706 /* YOLOv3TinyInt8LUT.mlmodel in Sources */,
 				681783552988F4F4009F6AF9 /* PubManager.swift in Sources */,
 				68178357298A3BCF009F6AF9 /* Kmeans.swift in Sources */,
+				68DF6A8F299604B7008BB706 /* YOLOv3Tiny.mlmodel in Sources */,
 				6817834B2988C1FF009F6AF9 /* ControlledStaticPublisher.swift in Sources */,
+				68DF6A91299604CC008BB706 /* ObjectDetector.mlmodel in Sources */,
 				681783512988C25E009F6AF9 /* Publisher.swift in Sources */,
 				6817834D2988C22A009F6AF9 /* ControlledPublisher.swift in Sources */,
+				68DF6A95299609AA008BB706 /* yolov5.mlmodel in Sources */,
+				68DF6A9F29965124008BB706 /* MobileNetV2Int8LUT.mlmodel in Sources */,
 				E7B7223B24807ACA002E43E8 /* MetalBuffer.swift in Sources */,
 				681783492988C1BC009F6AF9 /* RosMessagesUtils.swift in Sources */,
 				E73DD13624636FEF00D77039 /* Renderer.swift in Sources */,
@@ -389,14 +425,14 @@
 				CODE_SIGN_IDENTITY = "iPhone Developer";
 				CODE_SIGN_STYLE = Automatic;
 				CURRENT_PROJECT_VERSION = 1;
-				DEVELOPMENT_TEAM = 5R794K4PQ7;
+				DEVELOPMENT_TEAM = 9774Z87S2T;
 				INFOPLIST_FILE = SceneDepthPointCloud/Info.plist;
 				LD_RUNPATH_SEARCH_PATHS = (
 					"$(inherited)",
 					"@executable_path/Frameworks",
 				);
 				MARKETING_VERSION = 1.0;
-				PRODUCT_BUNDLE_IDENTIFIER = com.boin.SceneDepth;
+				PRODUCT_BUNDLE_IDENTIFIER = "com.cherrrity.coreML-with-lidar";
 				PRODUCT_NAME = "Point Cloud";
 				PROVISIONING_PROFILE_SPECIFIER = "";
 				SDKROOT = iphoneos;
@@ -415,14 +451,14 @@
 				CODE_SIGN_IDENTITY = "iPhone Developer";
 				CODE_SIGN_STYLE = Automatic;
 				CURRENT_PROJECT_VERSION = 1;
-				DEVELOPMENT_TEAM = 5R794K4PQ7;
+				DEVELOPMENT_TEAM = 9774Z87S2T;
 				INFOPLIST_FILE = SceneDepthPointCloud/Info.plist;
 				LD_RUNPATH_SEARCH_PATHS = (
 					"$(inherited)",
 					"@executable_path/Frameworks",
 				);
 				MARKETING_VERSION = 1.0;
-				PRODUCT_BUNDLE_IDENTIFIER = com.boin.SceneDepth;
+				PRODUCT_BUNDLE_IDENTIFIER = "com.cherrrity.coreML-with-lidar";
 				PRODUCT_NAME = "Point Cloud";
 				PROVISIONING_PROFILE_SPECIFIER = "";
 				SDKROOT = iphoneos;

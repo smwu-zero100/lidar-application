@@ -10,8 +10,11 @@ import Metal
 import MetalKit
 import ARKit
 import CoreLocation
+import Vision
 
-final class ViewController: UIViewController, ARSessionDelegate, CLLocationManagerDelegate {
+final class ViewController: UIViewController, ARSCNViewDelegate, ARSessionDelegate,  CLLocationManagerDelegate {
+
+    @IBOutlet weak var debugTextView: UITextView!
     
     private let isUIEnabled = true
     private let confidenceControl = UISegmentedControl(items: ["Low", "Medium", "High"])
@@ -23,11 +26,21 @@ final class ViewController: UIViewController, ARSessionDelegate, CLLocationManag
     private var isControlsViewEnabled = true
     
     private var session = ARSession()
+    
+    var bufferSize: CGSize = .zero
+    var rootLayer: CALayer! = nil
+    private var previewLayer: AVCaptureVideoPreviewLayer! = nil
+    
     private var locationManager = CLLocationManager()
     private var renderer: Renderer!
     
     private var rosControllerViewProvider: RosControllerViewProvider!
     private var pubController: PubController!
+    
+    // COREML
+    var visionRequests = [VNRequest]()
+    let dispatchQueueML = DispatchQueue(label: "com.cherrrity.coreML-with-lidar")
+    var latestPrediction : String = "…"
     
     public func setPubManager(pubManager: PubManager) {
         self.pubController = pubManager.pubController
@@ -103,17 +116,32 @@ final class ViewController: UIViewController, ARSessionDelegate, CLLocationManag
             self.controlsButton.leftAnchor.constraint(equalTo: self.view.leftAnchor, constant: 30),
         ])
         
-//        // Setup a save button
-//        let button = UIButton(type: .system, primaryAction: UIAction(title: "Save", handler: { (action) in
-//            self.renderer.savePointsToFile()
-//        }))
-//        button.translatesAutoresizingMaskIntoConstraints = false
-//        self.view.addSubview(button)
-//        NSLayoutConstraint.activate([
-//            button.centerXAnchor.constraint(equalTo: self.view.centerXAnchor),
-//            button.centerYAnchor.constraint(equalTo: self.view.centerYAnchor)
-//        ])
+        setupVision()
+        loopCoreMLUpdate()
     
+    }
+    
+    @discardableResult
+    func setupVision() -> NSError? {
+        // Setup Vision parts
+        let error: NSError! = nil
+        
+        guard let modelURL = Bundle.main.url(forResource: "MobileNetV2Int8LUT", withExtension: "mlmodelc") else {
+            return NSError(domain: "ViewController", code: -1, userInfo: [NSLocalizedDescriptionKey: "Model file is missing"])
+        }
+        do {
+            let selectedModel = try VNCoreMLModel(for: MLModel(contentsOf: modelURL))
+            let classificationRequest = VNCoreMLRequest(model: selectedModel, completionHandler: classificationCompleteHandler)
+            classificationRequest.imageCropAndScaleOption = VNImageCropAndScaleOption.centerCrop
+            
+            self.visionRequests = [classificationRequest]
+            //objectRecognition.imageCropAndScaleOption = VNImageCropAndScaleOption.centerCrop
+            
+        } catch let error as NSError {
+            print("Model loading went wrong: \(error)")
+        }
+        
+        return error
     }
     
     override func viewWillAppear(_ animated: Bool) {
@@ -122,7 +150,11 @@ final class ViewController: UIViewController, ARSessionDelegate, CLLocationManag
         // Create a world-tracking configuration, and
         // enable the scene depth frame-semantic.
         let configuration = ARWorldTrackingConfiguration()
-        configuration.frameSemantics = .sceneDepth
+        configuration.frameSemantics = [.sceneDepth, .smoothedSceneDepth]
+        
+        let selectedVideoFormat = ARWorldTrackingConfiguration.supportedVideoFormats[1]
+        configuration.videoFormat = selectedVideoFormat
+        print(selectedVideoFormat) //imageResolution=(1920, 1080) framesPerSecond=(60) for iPhone 12 Pro
 
         // Run the view's session
         session.run(configuration)
@@ -162,7 +194,7 @@ final class ViewController: UIViewController, ARSessionDelegate, CLLocationManag
         return true
     }
     
-    func session(_ session: ARSession, didFailWithError error: Error) {
+    func session(_ session: ARSession, didUpdate frame: ARFrame, didFailWithError error: Error) {
         // Present an error message to the user.
         guard error is ARError else { return }
         let errorWithInfo = error as NSError
@@ -183,6 +215,86 @@ final class ViewController: UIViewController, ARSessionDelegate, CLLocationManag
             }
             alertController.addAction(restartAction)
             self.present(alertController, animated: true, completion: nil)
+        }
+    }
+    
+    func classificationCompleteHandler(request: VNRequest, error: Error?) {
+        // Catch Errors
+        if error != nil {
+            print("Error: " + (error?.localizedDescription)!)
+            return
+        }
+        guard let observations = request.results else {
+            print("No results")
+            return
+        }
+        
+        
+        if observations.count <= 0 {
+            return
+        }else{
+            print(observations)
+        }
+        
+        // Get Classifications
+        let classifications = observations[0...1] // top 2 results
+            .compactMap({ $0 as? VNClassificationObservation })
+            .map({ "\($0.identifier) \(String(format:"- %.2f", $0.confidence))" })
+            .joined(separator: "\n")
+        
+        
+        DispatchQueue.main.async {
+            // Print Classifications
+            print(classifications)
+            print("--")
+            
+            // Display Debug Text on screen
+            var debugText:String = ""
+            debugText += classifications
+            self.debugTextView.text = debugText
+            
+            // Store the latest prediction
+            var objectName:String = "…"
+            objectName = classifications.components(separatedBy: "-")[0]
+            objectName = objectName.components(separatedBy: ",")[0]
+            self.latestPrediction = objectName
+            
+        }
+    }
+    
+    func loopCoreMLUpdate() {
+            // Continuously run CoreML whenever it's ready. (Preventing 'hiccups' in Frame Rate)
+            
+        dispatchQueueML.async {
+            // 1. Run Update.
+            self.updateCoreML()
+            
+            // 2. Loop this function.
+            self.loopCoreMLUpdate()
+        }
+        
+    }
+    
+    func updateCoreML() {
+        ///////////////////////////
+        // Get Camera Image as RGB
+        let pixbuff : CVPixelBuffer? = (session.currentFrame?.capturedImage)
+        if pixbuff == nil { return }
+        let ciImage = CIImage(cvPixelBuffer: pixbuff!)
+        // Note: Not entirely sure if the ciImage is being interpreted as RGB, but for now it works with the Inception model.
+        // Note2: Also uncertain if the pixelBuffer should be rotated before handing off to Vision (VNImageRequestHandler) - regardless, for now, it still works well with the Inception model.
+        
+        ///////////////////////////
+        // Prepare CoreML/Vision Request
+        let imageRequestHandler = VNImageRequestHandler(ciImage: ciImage, orientation: .right, options: [:])
+        // let imageRequestHandler = VNImageRequestHandler(cgImage: cgImage!, orientation: myOrientation, options: [:]) // Alternatively; we can convert the above to an RGB CGImage and use that. Also UIInterfaceOrientation can inform orientation values.
+        
+        ///////////////////////////
+        // Run Image Request
+        do {
+            try imageRequestHandler.perform(self.visionRequests)
+        } catch {
+            print(error)
         }
     }
 }

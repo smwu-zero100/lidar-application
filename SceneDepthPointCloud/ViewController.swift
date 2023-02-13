@@ -12,6 +12,12 @@ import ARKit
 import CoreLocation
 import Vision
 
+struct Prediction {
+    let labelIndex: Int
+    let confidence: Float
+    let boundingBox: CGRect
+}
+
 final class ViewController: UIViewController, ARSCNViewDelegate, ARSessionDelegate,  CLLocationManagerDelegate {
 
     @IBOutlet weak var debugTextView: UITextView!
@@ -27,10 +33,6 @@ final class ViewController: UIViewController, ARSCNViewDelegate, ARSessionDelega
     
     private var session = ARSession()
     
-    var bufferSize: CGSize = .zero
-    var rootLayer: CALayer! = nil
-    private var previewLayer: AVCaptureVideoPreviewLayer! = nil
-    
     private var locationManager = CLLocationManager()
     private var renderer: Renderer!
     
@@ -38,6 +40,7 @@ final class ViewController: UIViewController, ARSCNViewDelegate, ARSessionDelega
     private var pubController: PubController!
     
     // COREML
+    var bufferSize: CGSize = .zero
     var visionRequests = [VNRequest]()
     let dispatchQueueML = DispatchQueue(label: "com.cherrrity.coreML-with-lidar")
     var latestPrediction : String = "…"
@@ -47,6 +50,13 @@ final class ViewController: UIViewController, ARSCNViewDelegate, ARSessionDelega
         self.session = pubManager.session
         self.locationManager = pubManager.locationManager
     }
+    
+    var model_name = "yolov5_FP16"
+    var rootLayer: CALayer! = nil
+    var detectionOverlay: CALayer! = nil
+    // Vision parts
+    private var requests = [VNRequest]()
+    
     
     override func viewDidLoad() {
         super.viewDidLoad()
@@ -116,7 +126,26 @@ final class ViewController: UIViewController, ARSCNViewDelegate, ARSessionDelega
             self.controlsButton.leftAnchor.constraint(equalTo: self.view.leftAnchor, constant: 30),
         ])
         
+        // setup Vision parts
+        
+        bufferSize.width = view.bounds.width
+        bufferSize.height = view.bounds.height
+        
+        detectionOverlay = CALayer() // container layer that has all the renderings of the observations
+        detectionOverlay.name = "DetectionOverlay"
+        detectionOverlay.bounds = CGRect(x: 0.0,
+                                         y: 0.0,
+                                         width: view.bounds.width,
+                                         height: view.bounds.height)
+        detectionOverlay.position = CGPoint(x: view.bounds.midX, y: view.bounds.midY)
+        
+        rootLayer = view.layer
+        detectionOverlay.frame = rootLayer.bounds
+        rootLayer.addSublayer(detectionOverlay)
+        
+        updateLayerGeometry()
         setupVision()
+        
         loopCoreMLUpdate()
     
     }
@@ -126,12 +155,19 @@ final class ViewController: UIViewController, ARSCNViewDelegate, ARSessionDelega
         // Setup Vision parts
         let error: NSError! = nil
         
-        guard let modelURL = Bundle.main.url(forResource: "MobileNetV2Int8LUT", withExtension: "mlmodelc") else {
+        guard let modelURL = Bundle.main.url(forResource: model_name, withExtension: "mlmodelc") else {
             return NSError(domain: "ViewController", code: -1, userInfo: [NSLocalizedDescriptionKey: "Model file is missing"])
         }
         do {
             let selectedModel = try VNCoreMLModel(for: MLModel(contentsOf: modelURL))
-            let classificationRequest = VNCoreMLRequest(model: selectedModel, completionHandler: classificationCompleteHandler)
+            let classificationRequest = VNCoreMLRequest(model: selectedModel,  completionHandler: { (request, error) in
+                DispatchQueue.main.async(execute: {
+                    // perform all the UI updates on the main queue
+                    if let results = request.results {
+                        self.drawVisionRequestResults(results)
+                    }
+                })
+            })
             classificationRequest.imageCropAndScaleOption = VNImageCropAndScaleOption.centerCrop
             
             self.visionRequests = [classificationRequest]
@@ -218,34 +254,67 @@ final class ViewController: UIViewController, ARSCNViewDelegate, ARSessionDelega
         }
     }
     
+    func drawVisionRequestResults(_ results: [Any]) {
+        CATransaction.begin()
+        CATransaction.setValue(kCFBooleanTrue, forKey: kCATransactionDisableActions)
+        detectionOverlay.sublayers = nil // remove all the old recognized objects
+        for observation in results where observation is VNRecognizedObjectObservation {
+            guard let objectObservation = observation as? VNRecognizedObjectObservation else {
+                continue
+            }
+            // Select only the label with the highest confidence.
+            let topLabelObservation = objectObservation.labels[0]
+            let objectBounds = VNImageRectForNormalizedRect(objectObservation.boundingBox, Int(bufferSize.width), Int(bufferSize.height))
+            
+            let shapeLayer = self.createRoundedRectLayerWithBounds(objectBounds)
+            
+            let textLayer = self.createTextSubLayerInBounds(objectBounds,
+                                                            identifier: topLabelObservation.identifier,
+                                                            confidence: topLabelObservation.confidence)
+            
+            self.debugTextView.text = String(format: "\(topLabelObservation.identifier) - Confidence:  %.2f", topLabelObservation.confidence)
+            
+            shapeLayer.addSublayer(textLayer)
+            detectionOverlay.addSublayer(shapeLayer)
+        }
+        self.updateLayerGeometry()
+        CATransaction.commit()
+    }
+    
     func classificationCompleteHandler(request: VNRequest, error: Error?) {
         // Catch Errors
         if error != nil {
             print("Error: " + (error?.localizedDescription)!)
             return
         }
-        guard let observations = request.results else {
+        guard let results = request.results else {
             print("No results")
             return
         }
         
-        
-        if observations.count <= 0 {
+        if results.count <= 0 {
             return
-        }else{
-            print(observations)
         }
         
-        // Get Classifications
-        let classifications = observations[0...1] // top 2 results
-            .compactMap({ $0 as? VNClassificationObservation })
-            .map({ "\($0.identifier) \(String(format:"- %.2f", $0.confidence))" })
-            .joined(separator: "\n")
+        var classifications = ""
+        
+        print(results[0].confidence)
+        
+        for case let foundObject as VNRecognizedObjectObservation in results {
+            let bestLabel = foundObject.labels.first! // Label with highest confidence
+            let objectBounds = foundObject.boundingBox // Normalized between [0,1]
+            let confidence = foundObject.confidence // Confidence for the predicted class
+
+            // Use the computed values.
+            print(bestLabel.identifier, confidence, objectBounds)
+            classifications.append("\(bestLabel.identifier) \(String(format:"- %.2f", confidence)) \n")
+        }
         
         
         DispatchQueue.main.async {
+            // Array to store final predictions (after post-processing)
+
             // Print Classifications
-            print(classifications)
             print("--")
             
             // Display Debug Text on screen
@@ -261,6 +330,64 @@ final class ViewController: UIViewController, ARSCNViewDelegate, ARSessionDelega
             
         }
     }
+    
+    public func IoU(_ a: CGRect, _ b: CGRect) -> Float {
+        let intersection = a.intersection(b)
+        let union = a.union(b)
+        return Float((intersection.width * intersection.height) / (union.width * union.height))
+    }
+    
+    func updateLayerGeometry() {
+        let bounds = rootLayer.bounds
+        var scale: CGFloat
+        
+        
+        let xScale: CGFloat = bounds.size.width / bufferSize.height
+        let yScale: CGFloat = bounds.size.height / bufferSize.width
+        
+        scale = fmax(xScale, yScale)
+        if scale.isInfinite {
+            scale = 1.0
+        }
+        CATransaction.begin()
+        CATransaction.setValue(kCFBooleanTrue, forKey: kCATransactionDisableActions)
+        
+        // rotate the layer into screen orientation and scale and mirror
+        detectionOverlay.setAffineTransform(CGAffineTransform(rotationAngle: CGFloat(.pi / 2.0)) .scaledBy(x: scale, y: -scale))
+        // center the layer
+        detectionOverlay.position = CGPoint(x: bounds.midX, y: bounds.midY)
+        
+        CATransaction.commit()
+        
+    }
+    
+    func createTextSubLayerInBounds(_ bounds: CGRect, identifier: String, confidence: VNConfidence) -> CATextLayer {
+        let textLayer = CATextLayer()
+        textLayer.name = "Object Label"
+        let formattedString = NSMutableAttributedString(string: String(format: "\(identifier)- Confidence:  %.2f", confidence))
+        let largeFont = UIFont(name: "Helvetica", size: 24.0)!
+        formattedString.addAttributes([NSAttributedString.Key.font: largeFont], range: NSRange(location: 0, length: identifier.count))
+        textLayer.string = formattedString
+        textLayer.bounds = CGRect(x: 0, y: 0, width: bounds.size.height - 10, height: bounds.size.width - 10)
+        textLayer.position = CGPoint(x: bounds.midX, y: bounds.midY)
+        textLayer.shadowOpacity = 0.7
+        textLayer.shadowOffset = CGSize(width: 2, height: 2)
+        textLayer.foregroundColor = CGColor(colorSpace: CGColorSpaceCreateDeviceRGB(), components: [0.0, 0.0, 0.0, 1.0])
+        textLayer.contentsScale = 2.0 // retina rendering
+        // rotate the layer into screen orientation and scale and mirror
+        textLayer.setAffineTransform(CGAffineTransform(rotationAngle: CGFloat(.pi / 2.0)).scaledBy(x: 1.0, y: -1.0))
+        return textLayer
+    }
+    
+    func createRoundedRectLayerWithBounds(_ bounds: CGRect) -> CALayer {
+        let shapeLayer = CALayer()
+        shapeLayer.bounds = bounds
+        shapeLayer.position = CGPoint(x: bounds.midX, y: bounds.midY)
+        shapeLayer.name = "Found Object"
+        shapeLayer.backgroundColor = CGColor(colorSpace: CGColorSpaceCreateDeviceRGB(), components: [1.0, 1.0, 0.2, 0.4])
+        return shapeLayer
+    }
+    
     
     func loopCoreMLUpdate() {
             // Continuously run CoreML whenever it's ready. (Preventing 'hiccups' in Frame Rate)

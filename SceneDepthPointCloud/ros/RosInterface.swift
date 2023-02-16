@@ -11,8 +11,7 @@ import OSLog
 
 /// Raw message for interacting with rosbridge.
 struct RosbridgeMsg<T> : Encodable where T : Encodable {
-    var op: String
-    var id: String
+    var seq: Int
     var topic: String
     var type: String?
     var msg: T?
@@ -140,8 +139,8 @@ final class RosInterface {
         guard let data = self.toJson(encodable) else {
             return false
         }
-        
         let messageData = URLSessionWebSocketTask.Message.data(data)
+        
         self.socket?.send(messageData) { error in
             if let error = error {
                 self.logger.error("error sending over socket")

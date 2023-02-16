@@ -36,18 +36,13 @@ final class RosMessagesUtils {
         let height = UInt32(1)
         let width = UInt32(points.count)
         // Each value takes 4 bytes (float = 32 bits = 4 bytes)
-        let fields = [
-            sensor_msgs__PointField(name: "x", offset: UInt32(0), datatype: sensor_msgs__PointField.DATATYPE_FLOAT32, count: UInt32(1)),
-            sensor_msgs__PointField(name: "y", offset: UInt32(4), datatype: sensor_msgs__PointField.DATATYPE_FLOAT32, count: UInt32(1)),
-            sensor_msgs__PointField(name: "z", offset: UInt32(8), datatype: sensor_msgs__PointField.DATATYPE_FLOAT32, count: UInt32(1)),
-        ]
         let is_bigendian = false
         // 3 elements (x,y,z) * 4 bytes per element (float = 32 bits = 4 bytes)
         let point_step = UInt32(3 * 4)
         let row_step = width * point_step
         let data = self.flattenVectorFloat3Array(points)
         let is_dense = false
-        return sensor_msgs__PointCloud2(header: header, height: height, width: width, fields: fields, is_bigendian: is_bigendian, point_step: point_step, row_step: row_step, data: data, is_dense: is_dense)
+        return sensor_msgs__PointCloud2(header: header, height: height, width: width, is_bigendian: is_bigendian, point_step: point_step, row_step: row_step, data: data, is_dense: is_dense)
     }
     
     /// Flatten array of float3.

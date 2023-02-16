@@ -11,18 +11,22 @@ import ARKit
 
 final class Renderer {
     // Maximum number of points we store in the point cloud
-    private let maxPoints = 100_000_00
+    private let maxPoints = 1600
+    //100_000_00
     // Number of sample points on the grid
-    private let numGridPoints = 500
+    private let numGridPoints = 800
     // Particle's size in pixels
     private let particleSize: Float = 10
     // We only use landscape orientation in this app
     private let orientation = UIInterfaceOrientation.landscapeRight
     // Camera's threshold values for detecting when the camera moves so that we can accumulate the points
     private let cameraRotationThreshold = cos(2 * .degreesToRadian)
+    //cameraRotationThreshold : 0.99939084
     private let cameraTranslationThreshold: Float = pow(0.02, 2)   // (meter-squared)
+    //cameraTranslationThreshold : 0.0004
     // The max number of command buffers in flight
     private let maxInFlightBuffers = 3
+    //3
     
     private lazy var rotateToARCamera = Self.makeRotateToARCameraMatrix(orientation: orientation)
     private let session: ARSession
@@ -82,7 +86,9 @@ final class Renderer {
     // Camera data
     private var sampleFrame: ARFrame { session.currentFrame! }
     private lazy var cameraResolution = Float2(Float(sampleFrame.camera.imageResolution.width), Float(sampleFrame.camera.imageResolution.height))
+    // cameraResolution : SIMD2<Float>(1920.0, 1440.0)
     private lazy var viewToCamera = sampleFrame.displayTransform(for: orientation, viewportSize: viewportSize).inverted()
+    
     private lazy var lastCameraTransform = sampleFrame.camera.transform
     
     // interfaces
@@ -139,15 +145,19 @@ final class Renderer {
     private func updateCapturedImageTextures(frame: ARFrame) {
         // Create two textures (Y and CbCr) from the provided frame's captured image
         let pixelBuffer = frame.capturedImage
+        //print("pixelBuffer : \(pixelBuffer)")
         guard CVPixelBufferGetPlaneCount(pixelBuffer) >= 2 else {
             return
         }
         
         capturedImageTextureY = makeTexture(fromPixelBuffer: pixelBuffer, pixelFormat: .r8Unorm, planeIndex: 0)
+        //print("capturedImageTextureY : \(capturedImageTextureY)")
         capturedImageTextureCbCr = makeTexture(fromPixelBuffer: pixelBuffer, pixelFormat: .rg8Unorm, planeIndex: 1)
     }
     
     private func updateDepthTextures(frame: ARFrame) -> Bool {
+      //  print("frame.sceneDepth?.depthMap: \(String(describing: frame.sceneDepth?.depthMap))")
+      //  print("frame.sceneDepth?.confidenceMap \(String(describing: frame.sceneDepth?.confidenceMap))")
         guard let depthMap = frame.sceneDepth?.depthMap,
             let confidenceMap = frame.sceneDepth?.confidenceMap else {
                 return false
@@ -198,6 +208,8 @@ final class Renderer {
         currentBufferIndex = (currentBufferIndex + 1) % maxInFlightBuffers
         pointCloudUniformsBuffers[currentBufferIndex][0] = pointCloudUniforms
         
+       // print("shouldAccumulate(frame: currentFrame): \(shouldAccumulate(frame: currentFrame))")
+
         if shouldAccumulate(frame: currentFrame), updateDepthTextures(frame: currentFrame) {
             accumulatePoints(frame: currentFrame, commandBuffer: commandBuffer, renderEncoder: renderEncoder)
         }
@@ -234,6 +246,10 @@ final class Renderer {
     
     private func shouldAccumulate(frame: ARFrame) -> Bool {
         let cameraTransform = frame.camera.transform
+       // print("cameraTransform : \(cameraTransform)")
+       // print("dot : \(dot(cameraTransform.columns.2, lastCameraTransform.columns.2))")
+       // print("distance_squared( : \(distance_squared(cameraTransform.columns.3, lastCameraTransform.columns.3))")
+      // print("cameraTranslationThreshold : \(cameraTranslationThreshold)")
         return currentPointCount == 0
             || dot(cameraTransform.columns.2, lastCameraTransform.columns.2) <= cameraRotationThreshold
             || distance_squared(cameraTransform.columns.3, lastCameraTransform.columns.3) >= cameraTranslationThreshold
@@ -257,9 +273,14 @@ final class Renderer {
         renderEncoder.setVertexTexture(CVMetalTextureGetTexture(depthTexture!), index: Int(kTextureDepth.rawValue))
         renderEncoder.setVertexTexture(CVMetalTextureGetTexture(confidenceTexture!), index: Int(kTextureConfidence.rawValue))
         renderEncoder.drawPrimitives(type: .point, vertexStart: 0, vertexCount: gridPointsBuffer.count)
-        
+       // print("currentPointIndex : \(currentPointIndex)")
+        print("gridPointsBuffer.count : \(gridPointsBuffer.count)")
+       // print("maxPoints :\(maxPoints)")
+       // currentPointIndex = (gridPointsBuffer.count) % maxPoints
+       // print("gridPointsBuffer : \(gridPointsBuffer)")
         currentPointIndex = (currentPointIndex + gridPointsBuffer.count) % maxPoints
         currentPointCount = min(currentPointCount + gridPointsBuffer.count, maxPoints)
+       // currentPointCount = min( gridPointsBuffer.count, maxPoints)
         lastCameraTransform = frame.camera.transform
     }
     
@@ -322,7 +343,9 @@ private extension Renderer {
     /// Makes sample points on camera image, also precompute the anchor point for animation
     func makeGridPoints() -> [Float2] {
         let gridArea = cameraResolution.x * cameraResolution.y
+        //cameraResolution.x : 1920.0, cameraResolution.y : 1440.0, gridArea : 2764800.0
         let spacing = sqrt(gridArea / Float(numGridPoints))
+        // spacing: 74.36128
         let deltaX = Int(round(cameraResolution.x / spacing))
         let deltaY = Int(round(cameraResolution.y / spacing))
         

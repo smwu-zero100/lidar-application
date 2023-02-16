@@ -25,10 +25,16 @@
                                 <fontDescription key="fontDescription" type="system" pointSize="14"/>
                                 <textInputTraits key="textInputTraits" autocapitalizationType="sentences"/>
                             </textView>
+                            <imageView clipsSubviews="YES" userInteractionEnabled="NO" contentMode="scaleAspectFit" horizontalHuggingPriority="251" verticalHuggingPriority="251" fixedFrame="YES" translatesAutoresizingMaskIntoConstraints="NO" id="sKr-yc-kvZ">
+                                <rect key="frame" x="20" y="24" width="282" height="145"/>
+                                <autoresizingMask key="autoresizingMask" flexibleMaxX="YES" flexibleMaxY="YES"/>
+                                <color key="backgroundColor" systemColor="systemBackgroundColor"/>
+                            </imageView>
                         </subviews>
                         <viewLayoutGuide key="safeArea" id="3C0-cp-GOg"/>
                     </view>
                     <connections>
+                        <outlet property="debugImageView" destination="sKr-yc-kvZ" id="WUR-pH-3cA"/>
                         <outlet property="debugTextView" destination="j4D-4b-vtB" id="vGk-Xv-kLF"/>
                     </connections>
                 </viewController>

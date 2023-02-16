@@ -21,6 +21,7 @@ struct Prediction {
 final class ViewController: UIViewController, ARSCNViewDelegate, ARSessionDelegate,  CLLocationManagerDelegate {
 
     @IBOutlet weak var debugTextView: UITextView!
+    @IBOutlet weak var debugImageView: UIImageView!
     
     private let isUIEnabled = true
     private let confidenceControl = UISegmentedControl(items: ["Low", "Medium", "High"])
@@ -79,6 +80,7 @@ final class ViewController: UIViewController, ARSCNViewDelegate, ARSessionDelega
             
             view.backgroundColor = UIColor.clear
             // we need this to enable depth test
+            view.autoResizeDrawable = true
             view.depthStencilPixelFormat = .depth32Float
             view.contentScaleFactor = 1
             view.delegate = self
@@ -86,7 +88,10 @@ final class ViewController: UIViewController, ARSCNViewDelegate, ARSessionDelega
             // Configure the renderer to draw to the view
             renderer = Renderer(session: session, metalDevice: device, renderDestination: view)
             renderer.drawRectResized(size: view.bounds.size)
+            
         }
+        
+        self.debugImageView.layer.zPosition = 1
         
         // Confidence control
         confidenceControl.backgroundColor = .white
@@ -165,6 +170,9 @@ final class ViewController: UIViewController, ARSCNViewDelegate, ARSessionDelega
                     // perform all the UI updates on the main queue
                     if let results = request.results {
                         self.drawVisionRequestResults(results)
+                        if let imageBuffer = self.session.currentFrame?.capturedImage {
+                            self.debugImageView.image = UIImage(ciImage: CIImage(cvPixelBuffer: imageBuffer))
+                        }
                     }
                 })
             })
@@ -229,6 +237,7 @@ final class ViewController: UIViewController, ARSCNViewDelegate, ARSessionDelega
     override var prefersStatusBarHidden: Bool {
         return true
     }
+    
     
     func session(_ session: ARSession, didUpdate frame: ARFrame, didFailWithError error: Error) {
         // Present an error message to the user.
@@ -424,6 +433,25 @@ final class ViewController: UIViewController, ARSCNViewDelegate, ARSessionDelega
             print(error)
         }
     }
+}
+
+public func exifOrientationFromDeviceOrientation() -> UIInterfaceOrientation {
+    let curDeviceOrientation = UIDevice.current.orientation
+    let exifOrientation: UIInterfaceOrientation
+    
+    switch curDeviceOrientation {
+    case UIDeviceOrientation.portraitUpsideDown:  // Device oriented vertically, home button on the top
+        exifOrientation = .portrait
+    case UIDeviceOrientation.landscapeLeft:       // Device oriented horizontally, home button on the right
+        exifOrientation = .landscapeLeft
+    case UIDeviceOrientation.landscapeRight:      // Device oriented horizontally, home button on the left
+        exifOrientation = .landscapeRight
+    case UIDeviceOrientation.portrait:            // Device oriented vertically, home button on the bottom
+        exifOrientation = .portrait
+    default:
+        exifOrientation = .portrait
+    }
+    return exifOrientation
 }
 
 // MARK: - MTKViewDelegate

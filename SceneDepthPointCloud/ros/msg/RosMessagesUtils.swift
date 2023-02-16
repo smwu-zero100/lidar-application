@@ -30,7 +30,6 @@ final class RosMessagesUtils {
     /// Get sensor_msgs/PointCloud2 message from time and points.
     public static func pointsToPointCloud2(time: Double, points: [vector_float3]) -> sensor_msgs__PointCloud2 {
         
-        print("pointcloud count : ", points.count)
         let header = std_msgs__Header(stamp: self.getTimestamp(time), frame_id: "ipad")
         // Unordered point cloud: width * height = count * 1
         let height = UInt32(1)

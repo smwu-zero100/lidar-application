@@ -21,6 +21,8 @@ enum BufferIndices {
     kPointCloudUniforms = 0,
     kParticleUniforms = 1,
     kGridPoints = 2,
+    //0330
+    kCentroidPoints = 3,
 };
 
 struct RGBUniforms {

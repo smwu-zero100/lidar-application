@@ -34,7 +34,7 @@ struct Vertex {
         }
     }
 
-let K_COUNT = 5
+let K_COUNT = 3
 let DATA_COUNT = 50
 var k: [[Vertex]] = [[]]
 var centroids = [Vertex]()

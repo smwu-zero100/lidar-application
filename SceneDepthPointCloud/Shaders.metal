@@ -81,6 +81,17 @@ vertex RGBVertexOut rgbVertex(uint vertexID [[vertex_id]],
     return out;
 }
 
+//0220
+vertex float4 centroidVertex(const device packed_float2* vertices [[ buffer(0) ]],
+                                unsigned int vertexId [[ vertex_id ]])
+{
+  return float4(vertices[vertexId], 0.0, 1.0);
+}
+
+fragment half4 centroidThrough() {
+  return half4(0, 1, 0, 1);
+}
+
 fragment float4 rgbFragment(RGBVertexOut in [[stage_in]],
                             constant RGBUniforms &uniforms [[buffer(0)]],
                             texture2d<float, access::sample> capturedImageTextureY [[texture(kTextureY)]],

@@ -41,6 +41,8 @@ final class Renderer {
     private lazy var unprojectPipelineState = makeUnprojectionPipelineState()!
     private lazy var rgbPipelineState = makeRGBPipelineState()!
     private lazy var particlePipelineState = makeParticlePipelineState()!
+    //0220
+    private lazy var centroidPipelineState = makeCentroidPipelineState()!
     // texture cache for captured image
     private lazy var textureCache = makeTextureCache()
     private var capturedImageTextureY: CVMetalTexture?
@@ -79,7 +81,7 @@ final class Renderer {
     }()
     private var pointCloudUniformsBuffers = [MetalBuffer<PointCloudUniforms>]()
     // Particles buffer
-    private var particlesBuffer: MetalBuffer<ParticleUniforms>
+    var particlesBuffer: MetalBuffer<ParticleUniforms>
     private var currentPointIndex = 0
     var currentPointCount = 0
     
@@ -130,7 +132,7 @@ final class Renderer {
         depthStateDescriptor.depthCompareFunction = .lessEqual
         depthStateDescriptor.isDepthWriteEnabled = true
         depthStencilState = device.makeDepthStencilState(descriptor: depthStateDescriptor)!
-        
+
         inFlightSemaphore = DispatchSemaphore(value: maxInFlightBuffers)
     }
     
@@ -231,12 +233,15 @@ final class Renderer {
             renderEncoder.drawPrimitives(type: .triangleStrip, vertexStart: 0, vertexCount: 4)
         }
        
+        print("render_centroids: \(initAndClustering(points: particlesBuffer))")
+        print("render_centroids_num : \(initAndClustering(points: particlesBuffer).count)")
         // render particles
         renderEncoder.setDepthStencilState(depthStencilState)
         renderEncoder.setRenderPipelineState(particlePipelineState)
         renderEncoder.setVertexBuffer(pointCloudUniformsBuffers[currentBufferIndex])
         renderEncoder.setVertexBuffer(particlesBuffer)
-        renderEncoder.drawPrimitives(type: .point, vertexStart: 0, vertexCount: currentPointCount)
+   //     renderEncoder.setVertexBuffer(centroidBuffer)
+        renderEncoder.drawPrimitives(type: .point, vertexStart: 0, vertexCount: currentPointCount+3)
         renderEncoder.endEncoding()
         
             
@@ -247,10 +252,6 @@ final class Renderer {
     
     private func shouldAccumulate(frame: ARFrame) -> Bool {
         let cameraTransform = frame.camera.transform
-       // print("cameraTransform : \(cameraTransform)")
-       // print("dot : \(dot(cameraTransform.columns.2, lastCameraTransform.columns.2))")
-       // print("distance_squared( : \(distance_squared(cameraTransform.columns.3, lastCameraTransform.columns.3))")
-      // print("cameraTranslationThreshold : \(cameraTranslationThreshold)")
         return currentPointCount == 0
             || dot(cameraTransform.columns.2, lastCameraTransform.columns.2) <= cameraRotationThreshold
             || distance_squared(cameraTransform.columns.3, lastCameraTransform.columns.3) >= cameraTranslationThreshold
@@ -264,6 +265,7 @@ final class Renderer {
             retainingTextures.removeAll()
         }
         
+        
         renderEncoder.setDepthStencilState(relaxedStencilState)
         renderEncoder.setRenderPipelineState(unprojectPipelineState)
         renderEncoder.setVertexBuffer(pointCloudUniformsBuffers[currentBufferIndex])
@@ -274,12 +276,20 @@ final class Renderer {
         renderEncoder.setVertexTexture(CVMetalTextureGetTexture(depthTexture!), index: Int(kTextureDepth.rawValue))
         renderEncoder.setVertexTexture(CVMetalTextureGetTexture(confidenceTexture!), index: Int(kTextureConfidence.rawValue))
         renderEncoder.drawPrimitives(type: .point, vertexStart: 0, vertexCount: gridPointsBuffer.count)
+        
+        //0220
+        let centroidBuffer = MetalBuffer<Float3>(device: device,
+                                                                array: initAndClustering(points: particlesBuffer),
+                                                                index: kCentroidPoints.rawValue, options: [])
+        renderEncoder.setRenderPipelineState(centroidPipelineState)
+        renderEncoder.setVertexBuffer(centroidBuffer)
+        renderEncoder.drawPrimitives(type: .point, vertexStart: 0, vertexCount: initAndClustering(points: particlesBuffer).count)
+        
+        
         currentPointIndex = (currentPointIndex + gridPointsBuffer.count) % maxPoints
         currentPointCount = min(currentPointCount + gridPointsBuffer.count, maxPoints)
         lastCameraTransform = frame.camera.transform
-        print("centroids: \(initAndClustering(points: particlesBuffer))")
-        print("centroids_num : \(initAndClustering(points: particlesBuffer).count)")
-        
+
     }
     
     public func exportMesh(){
@@ -290,6 +300,21 @@ final class Renderer {
 // MARK: - Metal Helpers
 
 private extension Renderer {
+    //0220
+    func makeCentroidPipelineState() -> MTLRenderPipelineState? {
+        guard let vertexFunction = library.makeFunction(name: "centroidVertex"),
+              let fragmentFunction = library.makeFunction(name: "centroidThrough") else {
+                return nil
+        }
+        let descriptor = MTLRenderPipelineDescriptor()
+        descriptor.vertexFunction = vertexFunction
+        descriptor.fragmentFunction = fragmentFunction
+        descriptor.depthAttachmentPixelFormat = renderDestination.depthStencilPixelFormat
+        descriptor.colorAttachments[0].pixelFormat = .bgra8Unorm
+        
+        return try? device.makeRenderPipelineState(descriptor: descriptor)
+    }
+    
     func makeUnprojectionPipelineState() -> MTLRenderPipelineState? {
         guard let vertexFunction = library.makeFunction(name: "unprojectVertex") else {
                 return nil

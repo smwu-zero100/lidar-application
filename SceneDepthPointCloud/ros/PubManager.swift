@@ -30,6 +30,7 @@ final class PubManager {
     
     var centroids = [vector_float3]()
     
+    
     public init() {
         /// Create controlled pub objects for all publishers
         // hello boin
@@ -50,6 +51,7 @@ final class PubManager {
             .location : [self.pubLocation]
         ]
         self.pubController = PubController(pubs: controlledPubs, interface: self.interface)
+        publishPointCloud()  /////
     }
     
     private func startPubThread(id: String, pubType: PubController.PubType, publishFunc: @escaping () -> Void) {
@@ -111,17 +113,18 @@ final class PubManager {
     }
     
     private func publishPointCloud() {
+      
         guard let currentFrame = self.session.currentFrame,
               var pointCloud = currentFrame.rawFeaturePoints?.points else {
                 return
         }
         // clustering code 예정
         
-        centroids = initAndClustering(points: pointCloud)
-        
-        centroids.forEach { (point) in
-            pointCloud.append(point)
-        }
+       // centroids = initAndClustering(points: pointCloud)
+
+       // centroids.forEach { (point) in
+       //     pointCloud.append(point)
+       // }
         
         let timestamp = currentFrame.timestamp
         self.pubPointCloud.publish(RosMessagesUtils.pointsToPointCloud2(time: timestamp, points: pointCloud))

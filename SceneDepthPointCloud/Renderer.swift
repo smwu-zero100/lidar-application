@@ -58,7 +58,7 @@ final class Renderer {
     private lazy var gridPointsBuffer = MetalBuffer<Float2>(device: device,
                                                             array: makeGridPoints(),
                                                             index: kGridPoints.rawValue, options: [])
-    
+
     // RGB buffer
     private lazy var rgbUniforms: RGBUniforms = {
         var uniforms = RGBUniforms()
@@ -81,7 +81,7 @@ final class Renderer {
     // Particles buffer
     private var particlesBuffer: MetalBuffer<ParticleUniforms>
     private var currentPointIndex = 0
-    private var currentPointCount = 0
+    var currentPointCount = 0
     
     // Camera data
     private var sampleFrame: ARFrame { session.currentFrame! }
@@ -242,6 +242,7 @@ final class Renderer {
             
         commandBuffer.present(renderDestination.currentDrawable!)
         commandBuffer.commit()
+
     }
     
     private func shouldAccumulate(frame: ARFrame) -> Bool {
@@ -273,15 +274,12 @@ final class Renderer {
         renderEncoder.setVertexTexture(CVMetalTextureGetTexture(depthTexture!), index: Int(kTextureDepth.rawValue))
         renderEncoder.setVertexTexture(CVMetalTextureGetTexture(confidenceTexture!), index: Int(kTextureConfidence.rawValue))
         renderEncoder.drawPrimitives(type: .point, vertexStart: 0, vertexCount: gridPointsBuffer.count)
-       // print("currentPointIndex : \(currentPointIndex)")
-        print("gridPointsBuffer.count : \(gridPointsBuffer.count)")
-       // print("maxPoints :\(maxPoints)")
-       // currentPointIndex = (gridPointsBuffer.count) % maxPoints
-       // print("gridPointsBuffer : \(gridPointsBuffer)")
         currentPointIndex = (currentPointIndex + gridPointsBuffer.count) % maxPoints
         currentPointCount = min(currentPointCount + gridPointsBuffer.count, maxPoints)
-       // currentPointCount = min( gridPointsBuffer.count, maxPoints)
         lastCameraTransform = frame.camera.transform
+        print("centroids: \(initAndClustering(points: particlesBuffer))")
+        print("centroids_num : \(initAndClustering(points: particlesBuffer).count)")
+        
     }
     
     public func exportMesh(){
@@ -410,7 +408,7 @@ private extension Renderer {
     }
     
     public func savePointsToFile() {
-    
+        
         // 1
         var fileToWrite = ""
         let headers = ["ply", "format ascii 1.0", "element vertex \(currentPointCount)", "property float x", "property float y", "property float z", "property uchar red", "property uchar green", "property uchar blue", "property uchar alpha", "element face 0", "property list uchar int vertex_indices", "end_header"]
@@ -425,7 +423,7 @@ private extension Renderer {
             // 3
             let point = particlesBuffer[i]
             let colors = point.color
-            
+        
             // 4
             let red = Int(colors.x * 255.0).clamped(to: 0...255)
             let green = Int(colors.y * 255.0).clamped(to: 0...255)

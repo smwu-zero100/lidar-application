@@ -39,6 +39,7 @@ final class ViewController: UIViewController, ARSCNViewDelegate, ARSessionDelega
     
     private var rosControllerViewProvider: RosControllerViewProvider!
     private var pubController: PubController!
+    private var pubManger: PubManager!
     
     // COREML
     var bufferSize: CGSize = .zero
@@ -89,7 +90,6 @@ final class ViewController: UIViewController, ARSCNViewDelegate, ARSessionDelega
             // Configure the renderer to draw to the view
             renderer = Renderer(session: session, metalDevice: device, renderDestination: view)
             renderer.drawRectResized(size: view.bounds.size)
-            
         }
         
         self.debugImageView.layer.zPosition = 1
@@ -153,7 +153,6 @@ final class ViewController: UIViewController, ARSCNViewDelegate, ARSessionDelega
         setupVision()
         
         loopCoreMLUpdate()
-    
     }
     
     @discardableResult
@@ -285,7 +284,10 @@ final class ViewController: UIViewController, ARSCNViewDelegate, ARSessionDelega
             self.debugTextView.text = String(format: "\(topLabelObservation.identifier) - Confidence:  %.2f", topLabelObservation.confidence)
             
             shapeLayer.addSublayer(textLayer)
+            
+            //draw yolo bbox
             detectionOverlay.addSublayer(shapeLayer)
+            
         }
         self.updateLayerGeometry()
         CATransaction.commit()
@@ -458,6 +460,7 @@ public func exifOrientationFromDeviceOrientation() -> UIInterfaceOrientation {
 // MARK: - MTKViewDelegate
 
 extension ViewController: MTKViewDelegate {
+    
     // Called whenever view changes orientation or layout is changed
     func mtkView(_ view: MTKView, drawableSizeWillChange size: CGSize) {
         renderer.drawRectResized(size: size)
@@ -467,6 +470,7 @@ extension ViewController: MTKViewDelegate {
     func draw(in view: MTKView) {
         renderer.draw()
     }
+
 }
 
 // MARK: - RenderDestinationProvider

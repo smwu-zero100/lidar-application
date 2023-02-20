@@ -86,7 +86,7 @@ func initAndClustering(points: [vector_float3]) -> [vector_float3] {
             })
             // print("calculating")
         }
-        print(centroids.count)
+        print("centroid : \(centroids.count)")
         centroids.forEach { (point) in
             rt_centroid.append(vector_float3(x: point.x, y: point.y, z: point.z))
         }

@@ -164,8 +164,9 @@ final class RosMessagesUtils {
         let status = sensor_msgs__NavSatStatus(status: 0, service: 1)
         let latitude = location[0]
         let longitude = location[1]
+        let altitude = location[2]
         
-        return sensor_msgs__NavSatFix(header: header, status: status, latitude: latitude, longitude: longitude)
+        return sensor_msgs__NavSatFix(header: header, status: status, latitude: latitude, longitude: longitude, altitude: altitude)
     }
  }
     

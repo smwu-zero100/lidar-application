@@ -130,15 +130,13 @@ final class PubManager {
     private func publishLocation(){
 
         // location 데이터 받아오는지 잘 모르겠음!!!!!!!!!
-
-        guard let currentlocation = self.locationManager.location,
+        guard let currentLocation = self.locationManager.location,
+              let currentHeading = self.locationManager.heading,
               let currentFrame = self.session.currentFrame else{
             return
         }
-        let locations = [currentlocation.coordinate.latitude, currentlocation.coordinate.longitude]
-        print(locations)
+        let locations = [currentLocation.coordinate.latitude, currentLocation.coordinate.longitude, currentHeading.trueHeading]
         let timestamp = currentFrame.timestamp
-        
         self.pubLocation.publish(RosMessagesUtils.locationToNavsatFix(time: timestamp, location: locations))
     }
 }

@@ -103,7 +103,7 @@ struct sensor_msgs__NavSatFix:RosMsg{
     var status : sensor_msgs__NavSatStatus
     var latitude : Float64
     var longitude : Float64
-    var altitude : Float64 = 0
+    var altitude : Float64
     var position_covariance = [Float64](repeating: 0.0, count: 9)
     var position_covariance_type : UInt8 = 0
     

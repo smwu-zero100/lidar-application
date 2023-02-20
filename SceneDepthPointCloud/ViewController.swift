@@ -73,6 +73,7 @@ final class ViewController: UIViewController, ARSCNViewDelegate, ARSessionDelega
         locationManager.requestWhenInUseAuthorization()
         locationManager.pausesLocationUpdatesAutomatically = false
         locationManager.startUpdatingLocation()
+        locationManager.startUpdatingHeading()
         
         // Set the view to use the default device
         if let view = view as? MTKView {

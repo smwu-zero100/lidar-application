@@ -232,9 +232,10 @@ final class Renderer {
             renderEncoder.setFragmentTexture(CVMetalTextureGetTexture(capturedImageTextureCbCr!), index: Int(kTextureCbCr.rawValue))
             renderEncoder.drawPrimitives(type: .triangleStrip, vertexStart: 0, vertexCount: 4)
         }
-       
-        print("render_centroids: \(initAndClustering(points: particlesBuffer))")
-        print("render_centroids_num : \(initAndClustering(points: particlesBuffer).count)")
+    
+        print("render_centroids: \(initAndClustering(points: currentFrame.rawFeaturePoints?.points ?? []))")
+        print("render_centroids_num : \(initAndClustering(points: currentFrame.rawFeaturePoints?.points ?? []).count)")
+        
         // render particles
         renderEncoder.setDepthStencilState(depthStencilState)
         renderEncoder.setRenderPipelineState(particlePipelineState)
@@ -278,13 +279,13 @@ final class Renderer {
         renderEncoder.drawPrimitives(type: .point, vertexStart: 0, vertexCount: gridPointsBuffer.count)
         
         //0220
-        let centroidBuffer = MetalBuffer<Float3>(device: device,
-                                                                array: initAndClustering(points: particlesBuffer),
-                                                                index: kCentroidPoints.rawValue, options: [])
-        renderEncoder.setRenderPipelineState(centroidPipelineState)
-        renderEncoder.setVertexBuffer(centroidBuffer)
-        renderEncoder.drawPrimitives(type: .point, vertexStart: 0, vertexCount: initAndClustering(points: particlesBuffer).count)
-        
+//        let centroidBuffer = MetalBuffer<Float3>(device: device,
+//                                                                array: initAndClustering(points: particlesBuffer),
+//                                                                index: kCentroidPoints.rawValue, options: [])
+//        renderEncoder.setRenderPipelineState(centroidPipelineState)
+//        renderEncoder.setVertexBuffer(centroidBuffer)
+//        renderEncoder.drawPrimitives(type: .point, vertexStart: 0, vertexCount: initAndClustering(points: particlesBuffer).count)
+//
         
         currentPointIndex = (currentPointIndex + gridPointsBuffer.count) % maxPoints
         currentPointCount = min(currentPointCount + gridPointsBuffer.count, maxPoints)

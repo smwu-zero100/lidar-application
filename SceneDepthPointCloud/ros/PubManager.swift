@@ -120,11 +120,11 @@ final class PubManager {
         }
         // clustering code 예정
         
-       // centroids = initAndClustering(points: pointCloud)
+        // centroids = initAndClustering(points: pointCloud)
 
-       // centroids.forEach { (point) in
-       //     pointCloud.append(point)
-       // }
+        // centroids.forEach { (point) in
+        //     pointCloud.append(point)
+        // }
         
         let timestamp = currentFrame.timestamp
         self.pubPointCloud.publish(RosMessagesUtils.pointsToPointCloud2(time: timestamp, points: pointCloud))

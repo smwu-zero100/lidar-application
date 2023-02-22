@@ -41,7 +41,7 @@ var centroids = [Vertex]()
 var rt_centroid = [vector_float3]()
 var datas = [Vertex]()
 
-func initAndClustering(points: MetalBuffer<ParticleUniforms>) -> [vector_float3] {
+func initAndClustering(points: [vector_float3]) -> [vector_float3] {
     //
         datas.removeAll()
         k.removeAll()
@@ -50,10 +50,10 @@ func initAndClustering(points: MetalBuffer<ParticleUniforms>) -> [vector_float3]
     
         for i in 0..<points.count {
             let point = points[i]
-            datas.append(Vertex(x: point.position.x, y: point.position.y, z: point.position.z))
+            datas.append(Vertex(x: point.x, y: point.y, z: point.z))
         }
     
-    //    points.forEach { (point) in
+     //   points.forEach { (point) in
      //       datas.append(Vertex(x: point.x, y: point.y, z: point.z))
      //   }
         

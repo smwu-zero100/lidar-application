@@ -11,7 +11,7 @@ import ARKit
 
 final class Renderer {
     // Maximum number of points we store in the point cloud
-    private let maxPoints = 1600
+    private let maxPoints = 2000
     //100_000_00
     // Number of sample points on the grid
     private let numGridPoints = 800
@@ -231,6 +231,10 @@ final class Renderer {
             renderEncoder.setFragmentTexture(CVMetalTextureGetTexture(capturedImageTextureY!), index: Int(kTextureY.rawValue))
             renderEncoder.setFragmentTexture(CVMetalTextureGetTexture(capturedImageTextureCbCr!), index: Int(kTextureCbCr.rawValue))
             renderEncoder.drawPrimitives(type: .triangleStrip, vertexStart: 0, vertexCount: 4)
+            
+            
+            //0222
+
         }
     
         print("render_centroids: \(initAndClustering(points: currentFrame.rawFeaturePoints?.points ?? []))")
@@ -242,7 +246,9 @@ final class Renderer {
         renderEncoder.setVertexBuffer(pointCloudUniformsBuffers[currentBufferIndex])
         renderEncoder.setVertexBuffer(particlesBuffer)
    //     renderEncoder.setVertexBuffer(centroidBuffer)
-        renderEncoder.drawPrimitives(type: .point, vertexStart: 0, vertexCount: currentPointCount+3)
+        renderEncoder.drawPrimitives(type: .point, vertexStart: 0, vertexCount: currentPointCount)
+        
+        
         renderEncoder.endEncoding()
         
             
@@ -279,6 +285,7 @@ final class Renderer {
         renderEncoder.drawPrimitives(type: .point, vertexStart: 0, vertexCount: gridPointsBuffer.count)
         
         //0220
+<<<<<<< Updated upstream
 //        let centroidBuffer = MetalBuffer<Float3>(device: device,
 //                                                                array: initAndClustering(points: particlesBuffer),
 //                                                                index: kCentroidPoints.rawValue, options: [])
@@ -286,6 +293,14 @@ final class Renderer {
 //        renderEncoder.setVertexBuffer(centroidBuffer)
 //        renderEncoder.drawPrimitives(type: .point, vertexStart: 0, vertexCount: initAndClustering(points: particlesBuffer).count)
 //
+=======
+        let centroidBuffer = MetalBuffer<Float3>(device: device,
+                                                                array: initAndClustering(points: particlesBuffer),
+                                                                index: kCentroidPoints.rawValue, options: [])
+        renderEncoder.setRenderPipelineState(centroidPipelineState)
+        renderEncoder.setVertexBuffer(centroidBuffer)
+        renderEncoder.drawPrimitives(type: .point, vertexStart: 0, vertexCount: initAndClustering(points: particlesBuffer).count)
+>>>>>>> Stashed changes
         
         currentPointIndex = (currentPointIndex + gridPointsBuffer.count) % maxPoints
         currentPointCount = min(currentPointCount + gridPointsBuffer.count, maxPoints)
@@ -310,9 +325,10 @@ private extension Renderer {
         let descriptor = MTLRenderPipelineDescriptor()
         descriptor.vertexFunction = vertexFunction
         descriptor.fragmentFunction = fragmentFunction
+        //.bgra8Unorm
+        //0222
         descriptor.depthAttachmentPixelFormat = renderDestination.depthStencilPixelFormat
-        descriptor.colorAttachments[0].pixelFormat = .bgra8Unorm
-        
+        descriptor.colorAttachments[0].pixelFormat = renderDestination.colorPixelFormat
         return try? device.makeRenderPipelineState(descriptor: descriptor)
     }
     

@@ -81,17 +81,6 @@ vertex RGBVertexOut rgbVertex(uint vertexID [[vertex_id]],
     return out;
 }
 
-//0220
-vertex float4 centroidVertex(const device packed_float2* vertices [[ buffer(0) ]],
-                                unsigned int vertexId [[ vertex_id ]])
-{
-  return float4(vertices[vertexId], 0.0, 1.0);
-}
-
-fragment half4 centroidThrough() {
-  return half4(0, 1, 0, 1);
-}
-
 fragment float4 rgbFragment(RGBVertexOut in [[stage_in]],
                             constant RGBUniforms &uniforms [[buffer(0)]],
                             texture2d<float, access::sample> capturedImageTextureY [[texture(kTextureY)]],
@@ -105,7 +94,34 @@ fragment float4 rgbFragment(RGBVertexOut in [[stage_in]],
     const float3 sampledColor = (yCbCrToRGB * ycbcr).rgb;
     return float4(sampledColor, 1) * visibility;
 }
+//0220
+vertex ParticleVertexOut centroidVertex(uint vertexID [[vertex_id]],
+                             constant PointCloudUniforms &uniforms [[buffer(kPointCloudUniforms)]],
+                             constant ParticleUniforms *particleUniforms [[buffer(kParticleUniforms)]])
+{
+    const auto particleData = particleUniforms[vertexID];
+    const auto position = particleData.position;
+    const auto confidence = particleData.confidence;
+    const auto sampledColor = particleData.color;
+    const auto visibility = confidence >= uniforms.confidenceThreshold;
+    // animate and project the point
+    float4 projectedPosition = uniforms.viewProjectionMatrix * float4(position, 1.0);
+    const float pointSize = max(uniforms.particleSize / max(1.0, projectedPosition.z), 2.0);
+    projectedPosition /= projectedPosition.w;
+    
+    // prepare for output
+    ParticleVertexOut out;
+    out.position = projectedPosition;
+    out.pointSize = pointSize;
+    out.color = float4(sampledColor, visibility);
+    
+    return out;
+    
+}
 
+fragment half4 centroidThrough() {
+  return half4(0, 1, 0, 1);
+}
 vertex ParticleVertexOut particleVertex(uint vertexID [[vertex_id]],
                                         constant PointCloudUniforms &uniforms [[buffer(kPointCloudUniforms)]],
                                         constant ParticleUniforms *particleUniforms [[buffer(kParticleUniforms)]]) {

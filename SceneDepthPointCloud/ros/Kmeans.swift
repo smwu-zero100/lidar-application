@@ -34,14 +34,14 @@ struct Vertex {
         }
     }
 
-let K_COUNT = 10
-let DATA_COUNT = 50
+let K_COUNT = 5
+let DATA_COUNT = 60
 var k: [[Vertex]] = [[]]
 var centroids = [Vertex]()
 var rt_centroid = [vector_float3]()
 var datas = [Vertex]()
 
-func initAndClustering(points: [vector_float3]) -> [vector_float3] {
+func initAndClustering(points: MetalBuffer<ParticleUniforms>) -> [vector_float3] {
     //
         datas.removeAll()
         k.removeAll()
@@ -50,7 +50,7 @@ func initAndClustering(points: [vector_float3]) -> [vector_float3] {
     
         for i in 0..<points.count {
             let point = points[i]
-            datas.append(Vertex(x: point.x, y: point.y, z: point.z))
+            datas.append(Vertex(x: point.position.x, y: point.position.y, z: point.position.z))
         }
     
      //   points.forEach { (point) in

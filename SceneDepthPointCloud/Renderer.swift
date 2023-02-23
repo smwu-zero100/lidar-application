@@ -14,7 +14,7 @@ final class Renderer {
     private let maxPoints = 2000
     //100_000_00
     // Number of sample points on the grid
-    private let numGridPoints = 800
+    private let numGridPoints = 600
     // Particle's size in pixels
     private let particleSize: Float = 10
     // We only use landscape orientation in this app
@@ -237,8 +237,8 @@ final class Renderer {
 
         }
     
-        print("render_centroids: \(initAndClustering(points: currentFrame.rawFeaturePoints?.points ?? []))")
-        print("render_centroids_num : \(initAndClustering(points: currentFrame.rawFeaturePoints?.points ?? []).count)")
+      //  print("render_centroids: \(initAndClustering(points: currentFrame.rawFeaturePoints?.points ?? []))")
+     //   print("render_centroids_num : \(initAndClustering(points: currentFrame.rawFeaturePoints?.points ?? []).count)")
         
         // render particles
         renderEncoder.setDepthStencilState(depthStencilState)
@@ -285,22 +285,11 @@ final class Renderer {
         renderEncoder.drawPrimitives(type: .point, vertexStart: 0, vertexCount: gridPointsBuffer.count)
         
         //0220
-<<<<<<< Updated upstream
-//        let centroidBuffer = MetalBuffer<Float3>(device: device,
-//                                                                array: initAndClustering(points: particlesBuffer),
-//                                                                index: kCentroidPoints.rawValue, options: [])
-//        renderEncoder.setRenderPipelineState(centroidPipelineState)
-//        renderEncoder.setVertexBuffer(centroidBuffer)
-//        renderEncoder.drawPrimitives(type: .point, vertexStart: 0, vertexCount: initAndClustering(points: particlesBuffer).count)
-//
-=======
-        let centroidBuffer = MetalBuffer<Float3>(device: device,
-                                                                array: initAndClustering(points: particlesBuffer),
+        let centroidBuffer = MetalBuffer<Float3>(device: device, array: initAndClustering(points: particlesBuffer),
                                                                 index: kCentroidPoints.rawValue, options: [])
         renderEncoder.setRenderPipelineState(centroidPipelineState)
         renderEncoder.setVertexBuffer(centroidBuffer)
         renderEncoder.drawPrimitives(type: .point, vertexStart: 0, vertexCount: initAndClustering(points: particlesBuffer).count)
->>>>>>> Stashed changes
         
         currentPointIndex = (currentPointIndex + gridPointsBuffer.count) % maxPoints
         currentPointCount = min(currentPointCount + gridPointsBuffer.count, maxPoints)

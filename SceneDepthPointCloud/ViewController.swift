@@ -184,7 +184,7 @@ final class ViewController: UIViewController, ARSCNViewDelegate, ARSessionDelega
         } catch let error as NSError {
             print("Model loading went wrong: \(error)")
         }
-        
+
         return error
     }
     
@@ -425,13 +425,14 @@ final class ViewController: UIViewController, ARSCNViewDelegate, ARSessionDelega
         
         ///////////////////////////
         // Prepare CoreML/Vision Request
-        let imageRequestHandler = VNImageRequestHandler(ciImage: ciImage, orientation: .right, options: [:])
+        let imageRequestHandler = VNSequenceRequestHandler()
+       // let imageRequestHandler = VNImageRequestHandler(ciImage: ciImage, orientation: .right, options: [:])
         // let imageRequestHandler = VNImageRequestHandler(cgImage: cgImage!, orientation: myOrientation, options: [:]) // Alternatively; we can convert the above to an RGB CGImage and use that. Also UIInterfaceOrientation can inform orientation values.
         
         ///////////////////////////
         // Run Image Request
         do {
-            try imageRequestHandler.perform(self.visionRequests)
+            try imageRequestHandler.perform(self.visionRequests, on: ciImage)
         } catch {
             print(error)
         }

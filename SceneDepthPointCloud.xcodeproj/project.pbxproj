@@ -36,6 +36,7 @@
 /* End PBXBuildFile section */
 
 /* Begin PBXFileReference section */
+		03EF542529AC81DE00EF0799 /* YOLOv3TinyInt8LUT.mlmodel */ = {isa = PBXFileReference; lastKnownFileType = file.mlmodel; name = YOLOv3TinyInt8LUT.mlmodel; path = ../../../MLModelCamera_clone/models/YOLOv3TinyInt8LUT.mlmodel; sourceTree = "<group>"; };
 		681783432988C15F009F6AF9 /* PubController.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PubController.swift; sourceTree = "<group>"; };
 		681783462988C199009F6AF9 /* RosMessages.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RosMessages.swift; sourceTree = "<group>"; };
 		681783482988C1BC009F6AF9 /* RosMessagesUtils.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RosMessagesUtils.swift; sourceTree = "<group>"; };
@@ -115,6 +116,7 @@
 				68DF6A9E29965124008BB706 /* MobileNetV2Int8LUT.mlmodel */,
 				68DF6A92299609A7008BB706 /* yolov5.mlmodel */,
 				68DF6A90299604CB008BB706 /* ObjectDetector.mlmodel */,
+				03EF542529AC81DE00EF0799 /* YOLOv3TinyInt8LUT.mlmodel */,
 				68DF6A8E299604B7008BB706 /* YOLOv3Tiny.mlmodel */,
 			);
 			path = mlmodel;

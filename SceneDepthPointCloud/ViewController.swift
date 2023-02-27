@@ -53,7 +53,8 @@ final class ViewController: UIViewController, ARSCNViewDelegate, ARSessionDelega
         self.locationManager = pubManager.locationManager
     }
     
-    var model_name = "yolov5_FP16"
+    var model_name = "YOLOv3TinyInt8LUT"
+    //YOLOv3TinyInt8LUT
     var rootLayer: CALayer! = nil
     var detectionOverlay: CALayer! = nil
     // Vision parts
@@ -171,7 +172,9 @@ final class ViewController: UIViewController, ARSCNViewDelegate, ARSessionDelega
                     if let results = request.results {
                         self.drawVisionRequestResults(results)
                         if let imageBuffer = self.session.currentFrame?.capturedImage {
+                            //self.debugImageView.image = UIImage(ciImage: CIImage(cvPixelBuffer: imageBuffer))
                             self.debugImageView.image = UIImage(ciImage: CIImage(cvPixelBuffer: imageBuffer))
+
                         }
                     }
                 })
@@ -356,6 +359,12 @@ final class ViewController: UIViewController, ARSCNViewDelegate, ARSessionDelega
         
         let xScale: CGFloat = bounds.size.width / bufferSize.height
         let yScale: CGFloat = bounds.size.height / bufferSize.width
+        //bounds.size.width : 1194.0
+        //bufferSize.height : 834.0
+        //bounds.size.height: 834.0
+        //bufferSize.width : 1194.0
+        //xScale : 1.4316546762589928
+        //yScale : 0.6984924623115578
         
         scale = fmax(xScale, yScale)
         if scale.isInfinite {
@@ -363,9 +372,12 @@ final class ViewController: UIViewController, ARSCNViewDelegate, ARSessionDelega
         }
         CATransaction.begin()
         CATransaction.setValue(kCFBooleanTrue, forKey: kCATransactionDisableActions)
-        
         // rotate the layer into screen orientation and scale and mirror
-        detectionOverlay.setAffineTransform(CGAffineTransform(rotationAngle: CGFloat(.pi / 2.0)) .scaledBy(x: scale, y: -scale))
+        print("CGFloat(.pi / 3.0) : \(CGFloat(.pi / 3.0))")
+        //CGFloat(.pi / 2.0) : 1.57
+        //CGFloat(.pi / 3.0) : 1.04
+        
+        detectionOverlay.setAffineTransform(CGAffineTransform(rotationAngle: CGFloat(0.0)) .scaledBy(x: scale, y: -scale))
         // center the layer
         detectionOverlay.position = CGPoint(x: bounds.midX, y: bounds.midY)
         
@@ -420,19 +432,23 @@ final class ViewController: UIViewController, ARSCNViewDelegate, ARSessionDelega
         let pixbuff : CVPixelBuffer? = (session.currentFrame?.capturedImage)
         if pixbuff == nil { return }
         let ciImage = CIImage(cvPixelBuffer: pixbuff!)
+        
+
         // Note: Not entirely sure if the ciImage is being interpreted as RGB, but for now it works with the Inception model.
         // Note2: Also uncertain if the pixelBuffer should be rotated before handing off to Vision (VNImageRequestHandler) - regardless, for now, it still works well with the Inception model.
         
         ///////////////////////////
         // Prepare CoreML/Vision Request
-        let imageRequestHandler = VNSequenceRequestHandler()
-       // let imageRequestHandler = VNImageRequestHandler(ciImage: ciImage, orientation: .right, options: [:])
+       // let imageRequestHandler = VNSequenceRequestHandler()
+      //  let imageRequestHandler = VNImageRequestHandler(ciImage: ciImage, orientation: .right, options: [:])
+        let imageRequestHandler = VNImageRequestHandler(ciImage: ciImage, options: [:])
         // let imageRequestHandler = VNImageRequestHandler(cgImage: cgImage!, orientation: myOrientation, options: [:]) // Alternatively; we can convert the above to an RGB CGImage and use that. Also UIInterfaceOrientation can inform orientation values.
         
         ///////////////////////////
         // Run Image Request
         do {
-            try imageRequestHandler.perform(self.visionRequests, on: ciImage)
+         //   try imageRequestHandler.perform(self.visionRequests, on: ciImage)
+            try imageRequestHandler.perform(self.visionRequests)
         } catch {
             print(error)
         }

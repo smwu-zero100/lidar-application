@@ -22,7 +22,8 @@ enum BufferIndices {
     kParticleUniforms = 1,
     kGridPoints = 2,
     //0330
-    kCentroidPoints = 3,
+    kBboxUniforms = 3,
+    kBboxInfo = 4,
 };
 
 struct RGBUniforms {
@@ -44,9 +45,20 @@ struct PointCloudUniforms {
 };
 
 struct ParticleUniforms {
+    simd_float2 worldpoint_localposition;
+    simd_float4 particlebuffer_position;
+    simd_float3 particlebuffer_localposition;
     simd_float3 position;
     simd_float3 color;
+    float x;
+    float y;
     float confidence;
+};
+struct BboxInfo {
+    float x;
+    float y;
+    float w;
+    float h;
 };
 
 #endif /* ShaderTypes_h */

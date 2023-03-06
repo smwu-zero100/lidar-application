@@ -19,6 +19,7 @@ struct RGBVertexOut {
 
 // Particle vertex shader outputs and fragment shader inputs
 struct ParticleVertexOut {
+    float3 pre_position [[]];
     float4 position [[position]];
     float pointSize [[point_size]];
     float4 color;
@@ -38,6 +39,15 @@ static simd_float4 worldPoint(simd_float2 cameraPoint, float depth, matrix_float
     const auto worldPoint = localToWorld * simd_float4(localPoint, 1);
     
     return worldPoint / worldPoint.w;
+    //return localPoint;
+}
+static simd_float3 localPoint(simd_float2 cameraPoint, float depth, matrix_float3x3 cameraIntrinsicsInversed, matrix_float4x4 localToWorld) {
+    auto localPoint = cameraIntrinsicsInversed * simd_float3(cameraPoint, 1) * depth;
+    
+    localPoint[0] = cameraPoint[0]; // 2 + 1920 /2;
+    localPoint[1] = cameraPoint[1]; // 2 + 1440 /2;
+    
+    return localPoint;
 }
 
 ///  Vertex shader that takes in a 2D grid-point and infers its 3D position in world-space, along with RGB and confidence
@@ -48,7 +58,7 @@ vertex void unprojectVertex(uint vertexID [[vertex_id]],
                             texture2d<float, access::sample> capturedImageTextureY [[texture(kTextureY)]],
                             texture2d<float, access::sample> capturedImageTextureCbCr [[texture(kTextureCbCr)]],
                             texture2d<float, access::sample> depthTexture [[texture(kTextureDepth)]],
-                            texture2d<unsigned int, access::sample> confidenceTexture [[texture(kTextureConfidence)]]) {
+                            texture2d<unsigned int, access::sample> confidenceTexture [[texture(kTextureConfidence)]], constant float *bboxinfo [[buffer(kBboxInfo)]]) {
     
     const auto gridPoint = gridPoints[vertexID];
     const auto currentPointIndex = (uniforms.pointCloudCurrentIndex + vertexID) % uniforms.maxPoints;
@@ -57,17 +67,35 @@ vertex void unprojectVertex(uint vertexID [[vertex_id]],
     const auto depth = depthTexture.sample(colorSampler, texCoord).r;
     // With a 2D point plus depth, we can now get its 3D position
     const auto position = worldPoint(gridPoint, depth, uniforms.cameraIntrinsicsInversed, uniforms.localToWorld);
+    const auto loc_position = localPoint(gridPoint, depth, uniforms.cameraIntrinsicsInversed, uniforms.localToWorld);
     
     // Sample Y and CbCr textures to get the YCbCr color at the given texture coordinate
     const auto ycbcr = float4(capturedImageTextureY.sample(colorSampler, texCoord).r, capturedImageTextureCbCr.sample(colorSampler, texCoord.xy).rg, 1);
     const auto sampledColor = (yCbCrToRGB * ycbcr).rgb;
+    //const auto sampledColor =float3(0, 1, 0);
     // Sample the confidence map to get the confidence value
     const auto confidence = confidenceTexture.sample(colorSampler, texCoord).r;
-    
+
+    const auto x = bboxinfo[0];
+    const auto y = bboxinfo[1];
+    const auto w = bboxinfo[2];
+    const auto h = bboxinfo[3];
     // Write the data to the buffer
+    if((loc_position.x <= x+w) && (loc_position.y <= y+h)) {
+        if((x <= loc_position.x) && (y <= loc_position.y)) {
+            particleUniforms[currentPointIndex].color = simd_float3(255, 0, 0);
+        }else{
+            particleUniforms[currentPointIndex].color = sampledColor;
+        }
+    }else{
+        particleUniforms[currentPointIndex].color = sampledColor;
+    }
+    particleUniforms[currentPointIndex].x = x;
+    particleUniforms[currentPointIndex].y = y;
     particleUniforms[currentPointIndex].position = position.xyz;
-    particleUniforms[currentPointIndex].color = sampledColor;
+   // particleUniforms[currentPointIndex].color = sampledColor;
     particleUniforms[currentPointIndex].confidence = confidence;
+    
 }
 
 vertex RGBVertexOut rgbVertex(uint vertexID [[vertex_id]],
@@ -95,51 +123,43 @@ fragment float4 rgbFragment(RGBVertexOut in [[stage_in]],
     return float4(sampledColor, 1) * visibility;
 }
 //0220
-vertex ParticleVertexOut centroidVertex(uint vertexID [[vertex_id]],
-                             constant PointCloudUniforms &uniforms [[buffer(kPointCloudUniforms)]],
-                             constant ParticleUniforms *particleUniforms [[buffer(kParticleUniforms)]])
+vertex float4 bboxVertex(const device packed_float2* vertices [[ buffer(0) ]],
+                       unsigned int vertexId [[ vertex_id ]])
 {
-    const auto particleData = particleUniforms[vertexID];
-    const auto position = particleData.position;
-    const auto confidence = particleData.confidence;
-    const auto sampledColor = particleData.color;
-    const auto visibility = confidence >= uniforms.confidenceThreshold;
-    // animate and project the point
-    float4 projectedPosition = uniforms.viewProjectionMatrix * float4(position, 1.0);
-    const float pointSize = max(uniforms.particleSize / max(1.0, projectedPosition.z), 2.0);
-    projectedPosition /= projectedPosition.w;
-    
-    // prepare for output
-    ParticleVertexOut out;
-    out.position = projectedPosition;
-    out.pointSize = pointSize;
-    out.color = float4(sampledColor, visibility);
-    
-    return out;
+
+    return float4(vertices[vertexId], 0.0, 1.0);
     
 }
 
-fragment half4 centroidThrough() {
+fragment half4 bboxFragment() {
   return half4(0, 1, 0, 1);
 }
 vertex ParticleVertexOut particleVertex(uint vertexID [[vertex_id]],
                                         constant PointCloudUniforms &uniforms [[buffer(kPointCloudUniforms)]],
-                                        constant ParticleUniforms *particleUniforms [[buffer(kParticleUniforms)]]) {
+                                        device ParticleUniforms *particleUniforms [[buffer(kParticleUniforms)]]) {
     
+    const auto currentPointIndex = (uniforms.pointCloudCurrentIndex + vertexID) % uniforms.maxPoints;
     // get point data
     const auto particleData = particleUniforms[vertexID];
     const auto position = particleData.position;
     const auto confidence = particleData.confidence;
     const auto sampledColor = particleData.color;
     const auto visibility = confidence >= uniforms.confidenceThreshold;
-    
+
     // animate and project the point
     float4 projectedPosition = uniforms.viewProjectionMatrix * float4(position, 1.0);
     const float pointSize = max(uniforms.particleSize / max(1.0, projectedPosition.z), 2.0);
     projectedPosition /= projectedPosition.w;
     
+    //write
+    particleUniforms[currentPointIndex].particlebuffer_position = projectedPosition;
+    //particleUniforms[currentPointIndex].position = projectedPosition.xyz;
+    //particleUniforms[currentPointIndex].color = sampledColor;
+    //particleUniforms[currentPointIndex].confidence = confidence;
+    
     // prepare for output
     ParticleVertexOut out;
+    out.pre_position = position;
     out.position = projectedPosition;
     out.pointSize = pointSize;
     out.color = float4(sampledColor, visibility);

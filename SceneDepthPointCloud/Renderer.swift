@@ -8,10 +8,12 @@ The host app renderer.
 import Metal
 import MetalKit
 import ARKit
+import simd
+import Foundation
 
 final class Renderer {
     // Maximum number of points we store in the point cloud
-    private let maxPoints = 2000
+    private let maxPoints = 1200
     //100_000_00
     // Number of sample points on the grid
     private let numGridPoints = 600
@@ -25,8 +27,11 @@ final class Renderer {
     private let cameraTranslationThreshold: Float = pow(0.02, 2)   // (meter-squared)
     //cameraTranslationThreshold : 0.0004
     // The max number of command buffers in flight
-    private let maxInFlightBuffers = 3
+    private let maxInFlightBuffers = 4
     //3
+    
+    //0306
+    var bound : CGRect
     
     private lazy var rotateToARCamera = Self.makeRotateToARCameraMatrix(orientation: orientation)
     private let session: ARSession
@@ -42,7 +47,7 @@ final class Renderer {
     private lazy var rgbPipelineState = makeRGBPipelineState()!
     private lazy var particlePipelineState = makeParticlePipelineState()!
     //0220
-    private lazy var centroidPipelineState = makeCentroidPipelineState()!
+    private lazy var bboxPipelineState = makeBboxPipelineState()!
     // texture cache for captured image
     private lazy var textureCache = makeTextureCache()
     private var capturedImageTextureY: CVMetalTexture?
@@ -60,7 +65,6 @@ final class Renderer {
     private lazy var gridPointsBuffer = MetalBuffer<Float2>(device: device,
                                                             array: makeGridPoints(),
                                                             index: kGridPoints.rawValue, options: [])
-
     // RGB buffer
     private lazy var rgbUniforms: RGBUniforms = {
         var uniforms = RGBUniforms()
@@ -82,6 +86,8 @@ final class Renderer {
     private var pointCloudUniformsBuffers = [MetalBuffer<PointCloudUniforms>]()
     // Particles buffer
     var particlesBuffer: MetalBuffer<ParticleUniforms>
+    //0303
+    
     private var currentPointIndex = 0
     var currentPointCount = 0
     
@@ -112,6 +118,7 @@ final class Renderer {
         self.session = session
         self.device = device
         self.renderDestination = renderDestination
+        self.bound = CGRect(x: 0, y: 0, width: 0, height: 0)
         
         library = device.makeDefaultLibrary()!
         commandQueue = device.makeCommandQueue()!
@@ -134,6 +141,7 @@ final class Renderer {
         depthStencilState = device.makeDepthStencilState(descriptor: depthStateDescriptor)!
 
         inFlightSemaphore = DispatchSemaphore(value: maxInFlightBuffers)
+        
     }
     
     func drawRectResized(size: CGSize) {
@@ -182,7 +190,6 @@ final class Renderer {
         pointCloudUniforms.localToWorld = viewMatrixInversed * rotateToARCamera
         pointCloudUniforms.cameraIntrinsicsInversed = cameraIntrinsicsInversed
     }
-    
     func draw() {
         guard let currentFrame = session.currentFrame,
             let renderDescriptor = renderDestination.currentRenderPassDescriptor,
@@ -191,17 +198,13 @@ final class Renderer {
                 return
         }
         
-//        commandBuffer.addCompletedHandler { [self] _ in
-//            print(particlesBuffer[9].position) // Prints the 10th particles position
-//        }
-        
         _ = inFlightSemaphore.wait(timeout: DispatchTime.distantFuture)
         commandBuffer.addCompletedHandler { [weak self] commandBuffer in
             if let self = self {
                 self.inFlightSemaphore.signal()
             }
         }
-        
+
         // update frame data
         update(frame: currentFrame)
         updateCapturedImageTextures(frame: currentFrame)
@@ -223,17 +226,32 @@ final class Renderer {
                 retainingTextures.removeAll()
             }
             rgbUniformsBuffers[currentBufferIndex][0] = rgbUniforms
+   
             
             renderEncoder.setDepthStencilState(relaxedStencilState)
             renderEncoder.setRenderPipelineState(rgbPipelineState)
+
             renderEncoder.setVertexBuffer(rgbUniformsBuffers[currentBufferIndex])
             renderEncoder.setFragmentBuffer(rgbUniformsBuffers[currentBufferIndex])
             renderEncoder.setFragmentTexture(CVMetalTextureGetTexture(capturedImageTextureY!), index: Int(kTextureY.rawValue))
             renderEncoder.setFragmentTexture(CVMetalTextureGetTexture(capturedImageTextureCbCr!), index: Int(kTextureCbCr.rawValue))
             renderEncoder.drawPrimitives(type: .triangleStrip, vertexStart: 0, vertexCount: 4)
             
-            
-            //0222
+//            let vertexData: [Float] = [
+//                0, 1,
+//                -1, -1,
+//                1, -1
+//            ]
+//
+//            let vertexDataSize = vertexData.count * MemoryLayout<Float>.size
+//            let vertexBuffer = device.makeBuffer(bytes: vertexData,
+//                                                 length: vertexDataSize,
+//                                                 options: [])
+//
+//            renderEncoder.setDepthStencilState(depthStencilState)
+//            renderEncoder.setRenderPipelineState(bboxPipelineState)
+//            renderEncoder.setVertexBuffer(vertexBuffer, offset: 3, index: 0)
+//            renderEncoder.drawPrimitives(type: .triangle, vertexStart: 0, vertexCount: vertexData.count)
 
         }
     
@@ -244,13 +262,11 @@ final class Renderer {
         renderEncoder.setDepthStencilState(depthStencilState)
         renderEncoder.setRenderPipelineState(particlePipelineState)
         renderEncoder.setVertexBuffer(pointCloudUniformsBuffers[currentBufferIndex])
+        //currentBufferIndex : 0,1,2,3 반복
         renderEncoder.setVertexBuffer(particlesBuffer)
-   //     renderEncoder.setVertexBuffer(centroidBuffer)
+
         renderEncoder.drawPrimitives(type: .point, vertexStart: 0, vertexCount: currentPointCount)
-        
-        
         renderEncoder.endEncoding()
-        
             
         commandBuffer.present(renderDestination.currentDrawable!)
         commandBuffer.commit()
@@ -271,11 +287,16 @@ final class Renderer {
         commandBuffer.addCompletedHandler { buffer in
             retainingTextures.removeAll()
         }
-        
-        
+
         renderEncoder.setDepthStencilState(relaxedStencilState)
         renderEncoder.setRenderPipelineState(unprojectPipelineState)
+        
         renderEncoder.setVertexBuffer(pointCloudUniformsBuffers[currentBufferIndex])
+        //currentBufferIndex: 0과 2만 반복
+        var bboxInfoBuffer = MetalBuffer<Float>(device: device,
+                                                  array: [Float(bound.origin.x), Float(bound.origin.y), Float(bound.width),Float(bound.height)],
+                                                                index: kBboxInfo.rawValue, options: [])
+        renderEncoder.setVertexBuffer(bboxInfoBuffer)
         renderEncoder.setVertexBuffer(particlesBuffer)
         renderEncoder.setVertexBuffer(gridPointsBuffer)
         renderEncoder.setVertexTexture(CVMetalTextureGetTexture(capturedImageTextureY!), index: Int(kTextureY.rawValue))
@@ -283,14 +304,13 @@ final class Renderer {
         renderEncoder.setVertexTexture(CVMetalTextureGetTexture(depthTexture!), index: Int(kTextureDepth.rawValue))
         renderEncoder.setVertexTexture(CVMetalTextureGetTexture(confidenceTexture!), index: Int(kTextureConfidence.rawValue))
         renderEncoder.drawPrimitives(type: .point, vertexStart: 0, vertexCount: gridPointsBuffer.count)
-        
-        //0220
-        let centroidBuffer = MetalBuffer<Float3>(device: device, array: initAndClustering(points: particlesBuffer),
-                                                                index: kCentroidPoints.rawValue, options: [])
-        renderEncoder.setRenderPipelineState(centroidPipelineState)
-        renderEncoder.setVertexBuffer(centroidBuffer)
-        renderEncoder.drawPrimitives(type: .point, vertexStart: 0, vertexCount: initAndClustering(points: particlesBuffer).count)
-        
+//        for i in 0 ..< particlesBuffer.count{
+//            print("parti_posi: \(particlesBuffer[i].position)")
+//            print("particle_buffer_x : \(particlesBuffer[i].particlebuffer_position)")
+//
+//        }
+        print("x : \(particlesBuffer[1].x)")
+        print("y : \(particlesBuffer[1].y)")
         currentPointIndex = (currentPointIndex + gridPointsBuffer.count) % maxPoints
         currentPointCount = min(currentPointCount + gridPointsBuffer.count, maxPoints)
         lastCameraTransform = frame.camera.transform
@@ -306,9 +326,10 @@ final class Renderer {
 
 private extension Renderer {
     //0220
-    func makeCentroidPipelineState() -> MTLRenderPipelineState? {
-        guard let vertexFunction = library.makeFunction(name: "centroidVertex"),
-              let fragmentFunction = library.makeFunction(name: "centroidThrough") else {
+    func makeBboxPipelineState() -> MTLRenderPipelineState? {
+        
+        guard let vertexFunction = library.makeFunction(name: "bboxVertex"),
+              let fragmentFunction = library.makeFunction(name: "bboxFragment") else {
                 return nil
         }
         let descriptor = MTLRenderPipelineDescriptor()
@@ -316,6 +337,7 @@ private extension Renderer {
         descriptor.fragmentFunction = fragmentFunction
         //.bgra8Unorm
         //0222
+       // descriptor.depthAttachmentPixelFormat = renderDestination.depthStencilPixelFormat
         descriptor.depthAttachmentPixelFormat = renderDestination.depthStencilPixelFormat
         descriptor.colorAttachments[0].pixelFormat = renderDestination.colorPixelFormat
         return try? device.makeRenderPipelineState(descriptor: descriptor)
@@ -355,7 +377,6 @@ private extension Renderer {
             let fragmentFunction = library.makeFunction(name: "particleFragment") else {
                 return nil
         }
-        
         let descriptor = MTLRenderPipelineDescriptor()
         descriptor.vertexFunction = vertexFunction
         descriptor.fragmentFunction = fragmentFunction
@@ -377,13 +398,13 @@ private extension Renderer {
         // spacing: 74.36128
         let deltaX = Int(round(cameraResolution.x / spacing))
         let deltaY = Int(round(cameraResolution.y / spacing))
-        
+        //deltaX : 28
+        //deltaY : 21
         var points = [Float2]()
         for gridY in 0 ..< deltaY {
             let alternatingOffsetX = Float(gridY % 2) * spacing / 2
             for gridX in 0 ..< deltaX {
                 let cameraPoint = Float2(alternatingOffsetX + (Float(gridX) + 0.5) * spacing, (Float(gridY) + 0.5) * spacing)
-                
                 points.append(cameraPoint)
             }
         }

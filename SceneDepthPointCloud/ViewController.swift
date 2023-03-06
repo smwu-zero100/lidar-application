@@ -277,7 +277,8 @@ final class ViewController: UIViewController, ARSCNViewDelegate, ARSessionDelega
             // Select only the label with the highest confidence.
             let topLabelObservation = objectObservation.labels[0]
             let objectBounds = VNImageRectForNormalizedRect(objectObservation.boundingBox, Int(bufferSize.width), Int(bufferSize.height))
-            
+            renderer.bound = objectBounds
+            print("bounds : \(objectBounds)")
             let shapeLayer = self.createRoundedRectLayerWithBounds(objectBounds)
             
             let textLayer = self.createTextSubLayerInBounds(objectBounds,
@@ -373,7 +374,6 @@ final class ViewController: UIViewController, ARSCNViewDelegate, ARSessionDelega
         CATransaction.begin()
         CATransaction.setValue(kCFBooleanTrue, forKey: kCATransactionDisableActions)
         // rotate the layer into screen orientation and scale and mirror
-        print("CGFloat(.pi / 3.0) : \(CGFloat(.pi / 3.0))")
         //CGFloat(.pi / 2.0) : 1.57
         //CGFloat(.pi / 3.0) : 1.04
         

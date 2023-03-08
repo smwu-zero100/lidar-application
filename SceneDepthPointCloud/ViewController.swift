@@ -153,6 +153,8 @@ final class ViewController: UIViewController, ARSCNViewDelegate, ARSessionDelega
         updateLayerGeometry()
         setupVision()
         
+        print(view.bounds)
+        
         loopCoreMLUpdate()
     }
     
@@ -277,8 +279,8 @@ final class ViewController: UIViewController, ARSCNViewDelegate, ARSessionDelega
             // Select only the label with the highest confidence.
             let topLabelObservation = objectObservation.labels[0]
             let objectBounds = VNImageRectForNormalizedRect(objectObservation.boundingBox, Int(bufferSize.width), Int(bufferSize.height))
-            renderer.bound = objectBounds
-            print("bounds : \(objectBounds)")
+            renderer.objectDetectionBuffer[0] = BboxInfo(x: Float(objectBounds.minX), y: Float(objectBounds.minY), w: Float(objectBounds.maxX), h: Float(objectBounds.maxY))
+            print("bounds : \(renderer.objectDetectionBuffer[0])")
             let shapeLayer = self.createRoundedRectLayerWithBounds(objectBounds)
             
             let textLayer = self.createTextSubLayerInBounds(objectBounds,
@@ -361,13 +363,15 @@ final class ViewController: UIViewController, ARSCNViewDelegate, ARSessionDelega
         let xScale: CGFloat = bounds.size.width / bufferSize.height
         let yScale: CGFloat = bounds.size.height / bufferSize.width
         //bounds.size.width : 1194.0
-        //bufferSize.height : 834.0
         //bounds.size.height: 834.0
         //bufferSize.width : 1194.0
+        //bufferSize.height : 834.0
         //xScale : 1.4316546762589928
         //yScale : 0.6984924623115578
         
         scale = fmax(xScale, yScale)
+        // scale :, 1.4316546762589928
+        
         if scale.isInfinite {
             scale = 1.0
         }
@@ -377,9 +381,17 @@ final class ViewController: UIViewController, ARSCNViewDelegate, ARSessionDelega
         //CGFloat(.pi / 2.0) : 1.57
         //CGFloat(.pi / 3.0) : 1.04
         
-        detectionOverlay.setAffineTransform(CGAffineTransform(rotationAngle: CGFloat(0.0)) .scaledBy(x: scale, y: -scale))
+       
+        //detectionOverlay.setAffineTransform(CGAffineTransform(rotationAngle: CGFloat(0.0)))
         // center the layer
+        // 여기?
         detectionOverlay.position = CGPoint(x: bounds.midX, y: bounds.midY)
+        //print("layout position : \(detectionOverlay.bounds.width) \(detectionOverlay.bounds.height) \(detectionOverlay.position.x) \(detectionOverlay.position.y) ")
+        
+        // detectionOverlay.bounds.width 1194
+        // detectionOverlay.bounds.height 834
+        // detectionOverlay.position.x 597
+        // detectionOverlay.position.y 417
         
         CATransaction.commit()
         
@@ -388,18 +400,21 @@ final class ViewController: UIViewController, ARSCNViewDelegate, ARSessionDelega
     func createTextSubLayerInBounds(_ bounds: CGRect, identifier: String, confidence: VNConfidence) -> CATextLayer {
         let textLayer = CATextLayer()
         textLayer.name = "Object Label"
-        let formattedString = NSMutableAttributedString(string: String(format: "\(identifier)- Confidence:  %.2f", confidence))
+        let formattedString = NSMutableAttributedString(string: String(format: "\(identifier)- Confidence:  %.2f \n x1: \(bounds.minX) \n y1 : \(bounds.minY) \n x2: \(bounds.maxX) \n y2: \(bounds.maxY)", confidence))
+        
         let largeFont = UIFont(name: "Helvetica", size: 24.0)!
         formattedString.addAttributes([NSAttributedString.Key.font: largeFont], range: NSRange(location: 0, length: identifier.count))
         textLayer.string = formattedString
-        textLayer.bounds = CGRect(x: 0, y: 0, width: bounds.size.height - 10, height: bounds.size.width - 10)
+        textLayer.bounds = CGRect(x: 0, y: 0, width: bounds.size.width - 10, height: bounds.size.height - 10)
         textLayer.position = CGPoint(x: bounds.midX, y: bounds.midY)
         textLayer.shadowOpacity = 0.7
         textLayer.shadowOffset = CGSize(width: 2, height: 2)
-        textLayer.foregroundColor = CGColor(colorSpace: CGColorSpaceCreateDeviceRGB(), components: [0.0, 0.0, 0.0, 1.0])
+        //textLayer.backgroundColor = CGColor(colorSpace: CGColorSpaceCreateDeviceRGB(), components: [1.0, 0.0, 0.2, 0.4])
+        textLayer.foregroundColor = CGColor(colorSpace: CGColorSpaceCreateDeviceRGB(), components: [1.0, 0.0, 0.0, 0.4])
+        //shapeLayer.backgroundColor = CGColor(colorSpace: CGColorSpaceCreateDeviceRGB(), components: [1.0, 1.0, 0.2, 0.4])
         textLayer.contentsScale = 2.0 // retina rendering
         // rotate the layer into screen orientation and scale and mirror
-        textLayer.setAffineTransform(CGAffineTransform(rotationAngle: CGFloat(.pi / 2.0)).scaledBy(x: 1.0, y: -1.0))
+        //textLayer.setAffineTransform(CGAffineTransform(rotationAngle: CGFloat(0.0)).scaledBy(x: 1.0, y: -1.0))
         return textLayer
     }
     
@@ -408,7 +423,7 @@ final class ViewController: UIViewController, ARSCNViewDelegate, ARSessionDelega
         shapeLayer.bounds = bounds
         shapeLayer.position = CGPoint(x: bounds.midX, y: bounds.midY)
         shapeLayer.name = "Found Object"
-        shapeLayer.backgroundColor = CGColor(colorSpace: CGColorSpaceCreateDeviceRGB(), components: [1.0, 1.0, 0.2, 0.4])
+        shapeLayer.backgroundColor = CGColor(colorSpace: CGColorSpaceCreateDeviceRGB(), components: [1.0, 1.0, 0.2, 0.8])
         return shapeLayer
     }
     
@@ -432,6 +447,8 @@ final class ViewController: UIViewController, ARSCNViewDelegate, ARSessionDelega
         let pixbuff : CVPixelBuffer? = (session.currentFrame?.capturedImage)
         if pixbuff == nil { return }
         let ciImage = CIImage(cvPixelBuffer: pixbuff!)
+    
+        //print(CVPixelBufferGetWidth(session.currentFrame?.capturedImage), CVPixelBufferGetHeight(session.currentFrame?.capturedImage))
         
 
         // Note: Not entirely sure if the ciImage is being interpreted as RGB, but for now it works with the Inception model.

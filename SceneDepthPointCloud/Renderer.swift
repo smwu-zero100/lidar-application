@@ -86,6 +86,7 @@ final class Renderer {
     private var pointCloudUniformsBuffers = [MetalBuffer<PointCloudUniforms>]()
     // Particles buffer
     var particlesBuffer: MetalBuffer<ParticleUniforms>
+    var objectDetectionBuffer: MetalBuffer<BboxInfo>
     //0303
     
     private var currentPointIndex = 0
@@ -129,6 +130,8 @@ final class Renderer {
             pointCloudUniformsBuffers.append(.init(device: device, count: 1, index: kPointCloudUniforms.rawValue))
         }
         particlesBuffer = .init(device: device, count: maxPoints, index: kParticleUniforms.rawValue)
+        //currentBufferIndex: 0과 2만 반복
+        objectDetectionBuffer = .init(device: device, count: 10, index: kBboxInfo.rawValue )
         
         // rbg does not need to read/write depth
         let relaxedStateDescriptor = MTLDepthStencilDescriptor()
@@ -270,6 +273,11 @@ final class Renderer {
             
         commandBuffer.present(renderDestination.currentDrawable!)
         commandBuffer.commit()
+        
+        print("particle \(particlesBuffer[0].x) \(particlesBuffer[0].y) \(particlesBuffer[0].w) \(particlesBuffer[0].h)")
+        print("particle \(particlesBuffer[1].x) \(particlesBuffer[1].y) \(particlesBuffer[1].w) \(particlesBuffer[1].h)")
+        print("particle \(particlesBuffer[2].x) \(particlesBuffer[2].y) \(particlesBuffer[2].w) \(particlesBuffer[2].h)")
+        print("particle \(particlesBuffer[3].x) \(particlesBuffer[3].y) \(particlesBuffer[3].w) \(particlesBuffer[3].h)")
 
     }
     
@@ -290,13 +298,8 @@ final class Renderer {
 
         renderEncoder.setDepthStencilState(relaxedStencilState)
         renderEncoder.setRenderPipelineState(unprojectPipelineState)
-        
         renderEncoder.setVertexBuffer(pointCloudUniformsBuffers[currentBufferIndex])
-        //currentBufferIndex: 0과 2만 반복
-        var bboxInfoBuffer = MetalBuffer<Float>(device: device,
-                                                  array: [Float(bound.origin.x), Float(bound.origin.y), Float(bound.width),Float(bound.height)],
-                                                                index: kBboxInfo.rawValue, options: [])
-        renderEncoder.setVertexBuffer(bboxInfoBuffer)
+        renderEncoder.setVertexBuffer(objectDetectionBuffer)
         renderEncoder.setVertexBuffer(particlesBuffer)
         renderEncoder.setVertexBuffer(gridPointsBuffer)
         renderEncoder.setVertexTexture(CVMetalTextureGetTexture(capturedImageTextureY!), index: Int(kTextureY.rawValue))
@@ -304,16 +307,11 @@ final class Renderer {
         renderEncoder.setVertexTexture(CVMetalTextureGetTexture(depthTexture!), index: Int(kTextureDepth.rawValue))
         renderEncoder.setVertexTexture(CVMetalTextureGetTexture(confidenceTexture!), index: Int(kTextureConfidence.rawValue))
         renderEncoder.drawPrimitives(type: .point, vertexStart: 0, vertexCount: gridPointsBuffer.count)
-//        for i in 0 ..< particlesBuffer.count{
-//            print("parti_posi: \(particlesBuffer[i].position)")
-//            print("particle_buffer_x : \(particlesBuffer[i].particlebuffer_position)")
-//
-//        }
-        print("x : \(particlesBuffer[1].x)")
-        print("y : \(particlesBuffer[1].y)")
+
         currentPointIndex = (currentPointIndex + gridPointsBuffer.count) % maxPoints
         currentPointCount = min(currentPointCount + gridPointsBuffer.count, maxPoints)
         lastCameraTransform = frame.camera.transform
+    
 
     }
     

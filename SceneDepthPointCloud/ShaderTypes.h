@@ -52,6 +52,8 @@ struct ParticleUniforms {
     simd_float3 color;
     float x;
     float y;
+    float w;
+    float h;
     float confidence;
 };
 struct BboxInfo {

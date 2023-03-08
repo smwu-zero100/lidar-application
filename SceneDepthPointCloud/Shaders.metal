@@ -41,11 +41,13 @@ static simd_float4 worldPoint(simd_float2 cameraPoint, float depth, matrix_float
     return worldPoint / worldPoint.w;
     //return localPoint;
 }
+ 
 static simd_float3 localPoint(simd_float2 cameraPoint, float depth, matrix_float3x3 cameraIntrinsicsInversed, matrix_float4x4 localToWorld) {
     auto localPoint = cameraIntrinsicsInversed * simd_float3(cameraPoint, 1) * depth;
+    const auto worldPoint = localToWorld * simd_float4(localPoint, 1);
     
-    localPoint[0] = cameraPoint[0]; // 2 + 1920 /2;
-    localPoint[1] = cameraPoint[1]; // 2 + 1440 /2;
+    localPoint[0] = cameraPoint.x; //float(int(cameraPoint[0]).interpolated(from: 0...1920, to: 0...1192)); // 2 + 1920 /2;
+    localPoint[1] = cameraPoint.y; //float(int(cameraPoint[1]).interpolated(from: 0...1920, to: 0...1192)); // 2 + 1440 /2;
     
     return localPoint;
 }
@@ -58,7 +60,8 @@ vertex void unprojectVertex(uint vertexID [[vertex_id]],
                             texture2d<float, access::sample> capturedImageTextureY [[texture(kTextureY)]],
                             texture2d<float, access::sample> capturedImageTextureCbCr [[texture(kTextureCbCr)]],
                             texture2d<float, access::sample> depthTexture [[texture(kTextureDepth)]],
-                            texture2d<unsigned int, access::sample> confidenceTexture [[texture(kTextureConfidence)]], constant float *bboxinfo [[buffer(kBboxInfo)]]) {
+                            texture2d<unsigned int, access::sample> confidenceTexture [[texture(kTextureConfidence)]],
+                            constant BboxInfo *bboxinfo [[buffer(kBboxInfo)]]) {
     
     const auto gridPoint = gridPoints[vertexID];
     const auto currentPointIndex = (uniforms.pointCloudCurrentIndex + vertexID) % uniforms.maxPoints;
@@ -75,13 +78,17 @@ vertex void unprojectVertex(uint vertexID [[vertex_id]],
     //const auto sampledColor =float3(0, 1, 0);
     // Sample the confidence map to get the confidence value
     const auto confidence = confidenceTexture.sample(colorSampler, texCoord).r;
-
-    const auto x = bboxinfo[0];
-    const auto y = bboxinfo[1];
-    const auto w = bboxinfo[2];
-    const auto h = bboxinfo[3];
+    
+    const auto a = 1.61; // 가로비
+    const auto b = 1.72; // 세로비
+    
+    const auto x = bboxinfo[0].x * a; // min_x
+    const auto y = bboxinfo[0].y * b; // min_y
+    const auto w = bboxinfo[0].w * a; // max_x
+    const auto h = bboxinfo[0].h * b; // max_y
+    
     // Write the data to the buffer
-    if((loc_position.x <= x+w) && (loc_position.y <= y+h)) {
+    if((loc_position.x <= w) && (loc_position.y <= h)) {
         if((x <= loc_position.x) && (y <= loc_position.y)) {
             particleUniforms[currentPointIndex].color = simd_float3(255, 0, 0);
         }else{
@@ -92,6 +99,8 @@ vertex void unprojectVertex(uint vertexID [[vertex_id]],
     }
     particleUniforms[currentPointIndex].x = x;
     particleUniforms[currentPointIndex].y = y;
+    particleUniforms[currentPointIndex].w = w;
+    particleUniforms[currentPointIndex].h = h;
     particleUniforms[currentPointIndex].position = position.xyz;
    // particleUniforms[currentPointIndex].color = sampledColor;
     particleUniforms[currentPointIndex].confidence = confidence;

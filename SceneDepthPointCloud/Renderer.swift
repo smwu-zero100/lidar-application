@@ -7,13 +7,15 @@ The host app renderer.
 
 import Metal
 import MetalKit
+import SceneKit
 import ARKit
+import GLKit
 import simd
 import Foundation
 
 final class Renderer {
     // Maximum number of points we store in the point cloud
-    private let maxPoints = 1200
+    private let maxPoints = 3600
     //100_000_00
     // Number of sample points on the grid
     private let numGridPoints = 600
@@ -27,7 +29,7 @@ final class Renderer {
     private let cameraTranslationThreshold: Float = pow(0.02, 2)   // (meter-squared)
     //cameraTranslationThreshold : 0.0004
     // The max number of command buffers in flight
-    private let maxInFlightBuffers = 4
+    private let maxInFlightBuffers = 7
     //3
     
     //0306
@@ -39,13 +41,15 @@ final class Renderer {
     // Metal objects and textures
     private let device: MTLDevice
     private let library: MTLLibrary
-    private let renderDestination: RenderDestinationProvider
+    //private let renderDestination: RenderDestinationProvider
+    private let sceneView: ARSCNView
     private let relaxedStencilState: MTLDepthStencilState
     private let depthStencilState: MTLDepthStencilState
     private let commandQueue: MTLCommandQueue
     private lazy var unprojectPipelineState = makeUnprojectionPipelineState()!
     private lazy var rgbPipelineState = makeRGBPipelineState()!
     private lazy var particlePipelineState = makeParticlePipelineState()!
+    private lazy var objectDetectionPipelineState = makeObjectDetectionPipelineState()!;
     //0220
     private lazy var bboxPipelineState = makeBboxPipelineState()!
     // texture cache for captured image
@@ -87,10 +91,14 @@ final class Renderer {
     // Particles buffer
     var particlesBuffer: MetalBuffer<ParticleUniforms>
     var objectDetectionBuffer: MetalBuffer<BboxInfo>
+    var centeroidBuffer: MetalBuffer<ObstacleInfo>
+    var bboxMinMaxBuffer: MetalBuffer<BBoxMinMaxInfo>
+    var objectDetection3dBuffer: MetalBuffer<Bbox3dInfo>
     //0303
     
     private var currentPointIndex = 0
     var currentPointCount = 0
+    var olderNode = SCNNode(geometry: SCNBox(width: 0, height: 0, length: 0, chamferRadius: 0))
     
     // Camera data
     private var sampleFrame: ARFrame { session.currentFrame! }
@@ -115,14 +123,17 @@ final class Renderer {
         }
     }
     
-    init(session: ARSession, metalDevice device: MTLDevice, renderDestination: RenderDestinationProvider) {
+    // renderDestination -> mtkView
+    init(session: ARSession, metalDevice device: MTLDevice, sceneView: ARSCNView) {
         self.session = session
         self.device = device
-        self.renderDestination = renderDestination
+        //self.renderDestination = renderDestination
+        self.sceneView = sceneView
         self.bound = CGRect(x: 0, y: 0, width: 0, height: 0)
         
         library = device.makeDefaultLibrary()!
-        commandQueue = device.makeCommandQueue()!
+        //commandQueue = device.makeCommandQueue()!
+        commandQueue = sceneView.commandQueue!
         
         // initialize our buffers
         for _ in 0 ..< maxInFlightBuffers {
@@ -132,6 +143,40 @@ final class Renderer {
         particlesBuffer = .init(device: device, count: maxPoints, index: kParticleUniforms.rawValue)
         //currentBufferIndex: 0과 2만 반복
         objectDetectionBuffer = .init(device: device, count: 10, index: kBboxInfo.rawValue )
+        objectDetection3dBuffer = .init(device: device, count: 2, index: kBbox3dInfo.rawValue)
+        bboxMinMaxBuffer = .init(device: device, count: 1, index: kMinMaxInfo.rawValue)
+        centeroidBuffer = .init(device: device, count: maxPoints, index: kObstacleInfo.rawValue )
+        
+        // init MinMaxbuffer
+        bboxMinMaxBuffer[0].min_x = 100.0;
+        bboxMinMaxBuffer[0].max_x = -100.0;
+        bboxMinMaxBuffer[0].min_y = 100.0;
+        bboxMinMaxBuffer[0].max_y = -100.0;
+        bboxMinMaxBuffer[0].min_z = 100.0;
+        bboxMinMaxBuffer[0].max_z = -100.0;
+        
+        // init centroidbuffer
+        centeroidBuffer[0].position.x = 0.0;
+        centeroidBuffer[0].position.y = 0.0;
+        centeroidBuffer[0].position.z = 0.0;
+        centeroidBuffer[0].count = 0;
+        centeroidBuffer[0].depth = 100.0;
+        
+        objectDetection3dBuffer[0].position.x = 0;
+        objectDetection3dBuffer[0].position.y = 0;
+        objectDetection3dBuffer[0].position.z = 0;
+        
+        
+        objectDetection3dBuffer[1].position.x = 1;
+        objectDetection3dBuffer[1].position.y = 0;
+        objectDetection3dBuffer[1].position.z = 0;
+        
+       
+        olderNode.name = "3d bbox"
+        olderNode.position = SCNVector3(0, 0, 0)
+        sceneView.scene.rootNode.addChildNode(olderNode)
+        
+        
         
         // rbg does not need to read/write depth
         let relaxedStateDescriptor = MTLDepthStencilDescriptor()
@@ -139,12 +184,11 @@ final class Renderer {
         
         // setup depth test for point cloud
         let depthStateDescriptor = MTLDepthStencilDescriptor()
-        depthStateDescriptor.depthCompareFunction = .lessEqual
+        depthStateDescriptor.depthCompareFunction = .greaterEqual
         depthStateDescriptor.isDepthWriteEnabled = true
         depthStencilState = device.makeDepthStencilState(descriptor: depthStateDescriptor)!
 
         inFlightSemaphore = DispatchSemaphore(value: maxInFlightBuffers)
-        
     }
     
     func drawRectResized(size: CGSize) {
@@ -169,8 +213,6 @@ final class Renderer {
     }
     
     private func updateDepthTextures(frame: ARFrame) -> Bool {
-      //  print("frame.sceneDepth?.depthMap: \(String(describing: frame.sceneDepth?.depthMap))")
-      //  print("frame.sceneDepth?.confidenceMap \(String(describing: frame.sceneDepth?.confidenceMap))")
         guard let depthMap = frame.sceneDepth?.depthMap,
             let confidenceMap = frame.sceneDepth?.confidenceMap else {
                 return false
@@ -193,12 +235,63 @@ final class Renderer {
         pointCloudUniforms.localToWorld = viewMatrixInversed * rotateToARCamera
         pointCloudUniforms.cameraIntrinsicsInversed = cameraIntrinsicsInversed
     }
+
+    public func DrawLineNode( pointA : SCNVector3,  pointB : SCNVector3, color: UIColor) {
+        var distance = DistanceBetweenPoints(a: pointA, b: pointB);
+        var line = DrawCylinderBetweenPoints(a: pointA, b: pointB, length: distance, radius: 0.001 , radialSegments: 10, color: color);
+        line.look(at: pointB, up: sceneView.scene.rootNode.worldUp, localFront: line.worldUp);
+
+        sceneView.scene.rootNode.addChildNode(line);
+    }
+    
+    public func DrawCylinderBetweenPoints(a : SCNVector3, b : SCNVector3, length : Float, radius : Float, radialSegments : Int, color : UIColor) -> SCNNode {
+           var material = SCNMaterial();
+           material.diffuse.contents = color;
+
+        var cylinderNode = SCNNode();
+            let cylinder = SCNCylinder();
+            cylinder.radius = CGFloat(radius);
+            cylinder.height = CGFloat(length);
+           cylinder.radialSegmentCount = radialSegments;
+        cylinderNode.position = GetMidpoint(a: a, b: b);
+           cylinderNode.geometry?.firstMaterial = material;
+
+           return cylinderNode;
+           }
+    
+    public func DistanceBetweenPoints( a : SCNVector3, b : SCNVector3) -> Float {
+        let vector = SCNVector3(x: (a.x - b.x), y: (a.y - b.y), z:(a.z - b.z));
+        return sqrt(vector.x * vector.x + vector.y * vector.y + vector.z * vector.z);
+    }
+    
+    public func GetMidpoint( a : SCNVector3, b : SCNVector3) -> SCNVector3 {
+        let x = (a.x + b.x) / 2;
+        let y = (a.y + b.y) / 2;
+        let z = (a.z + b.z) / 2;
+
+        return SCNVector3(x, y, z);
+    }
+
+    
     func draw() {
+        sceneView.scene.rootNode.enumerateChildNodes { (node, stop) in
+            node.removeFromParentNode()
+        }
+        
+        // init MinMaxbuffer
+//        bboxMinMaxBuffer[0].min_x = 10.0;
+//        bboxMinMaxBuffer[0].max_x = -10.0;
+//        bboxMinMaxBuffer[0].min_y = 10.0;
+//        bboxMinMaxBuffer[0].max_y = -10.0;
+//        bboxMinMaxBuffer[0].min_z = 10.0;
+//        bboxMinMaxBuffer[0].max_z = -10.0;
+        
+        
+//        // init centroidbuffer
         guard let currentFrame = session.currentFrame,
-            let renderDescriptor = renderDestination.currentRenderPassDescriptor,
             let commandBuffer = commandQueue.makeCommandBuffer(),
-            let renderEncoder = commandBuffer.makeRenderCommandEncoder(descriptor: renderDescriptor) else {
-                return
+            let renderEncoder = sceneView.currentRenderCommandEncoder else {
+                  return
         }
         
         _ = inFlightSemaphore.wait(timeout: DispatchTime.distantFuture)
@@ -212,6 +305,7 @@ final class Renderer {
         update(frame: currentFrame)
         updateCapturedImageTextures(frame: currentFrame)
         
+        
         // handle buffer rotating
         currentBufferIndex = (currentBufferIndex + 1) % maxInFlightBuffers
         pointCloudUniformsBuffers[currentBufferIndex][0] = pointCloudUniforms
@@ -221,6 +315,42 @@ final class Renderer {
         if shouldAccumulate(frame: currentFrame), updateDepthTextures(frame: currentFrame) {
             accumulatePoints(frame: currentFrame, commandBuffer: commandBuffer, renderEncoder: renderEncoder)
         }
+        
+        //print("min max : \(bboxMinMaxBuffer[0])")
+        //print("centroid : \(centeroidBuffer[0])")
+        
+        renderEncoder.setDepthStencilState(relaxedStencilState)
+        renderEncoder.setRenderPipelineState(objectDetectionPipelineState)
+        renderEncoder.setVertexBuffer(bboxMinMaxBuffer)
+        renderEncoder.setVertexBuffer(objectDetection3dBuffer)
+        renderEncoder.drawPrimitives(type: .line, vertexStart: 0, vertexCount: objectDetection3dBuffer.count)
+    
+        let width = sqrt((bboxMinMaxBuffer[0].max_x - bboxMinMaxBuffer[0].min_x) * (bboxMinMaxBuffer[0].max_x - bboxMinMaxBuffer[0].min_x));
+        let height = sqrt((bboxMinMaxBuffer[0].max_y - bboxMinMaxBuffer[0].min_y) * (bboxMinMaxBuffer[0].max_y - bboxMinMaxBuffer[0].min_y));
+        let length = sqrt((bboxMinMaxBuffer[0].max_z - bboxMinMaxBuffer[0].min_z) * (bboxMinMaxBuffer[0].max_z - bboxMinMaxBuffer[0].min_z));
+        
+        print("---------------------------")
+        print(width, height, length)
+        print(centeroidBuffer[0].position)
+        print(centeroidBuffer[0].count)
+        print(centeroidBuffer[0].position.x / Float(centeroidBuffer[0].count))
+        print(centeroidBuffer[0].position.y / Float(centeroidBuffer[0].count))
+        print(centeroidBuffer[0].position.z / Float(centeroidBuffer[0].count))
+        print(particlesBuffer[0].position)
+        
+        particlesBuffer[0].position.x = centeroidBuffer[0].position.x / Float(centeroidBuffer[0].count)
+        particlesBuffer[0].position.y = centeroidBuffer[0].position.y / Float(centeroidBuffer[0].count)
+        particlesBuffer[0].position.z = centeroidBuffer[0].position.z / Float(centeroidBuffer[0].count)
+        
+        let box = SCNBox(width: CGFloat(width), height: CGFloat((height)), length: CGFloat(width), chamferRadius: 0)
+        box.firstMaterial?.diffuse.contents  = UIColor(red: 30.0 , green: 150.0, blue: 30.0, alpha: 0.6)
+        let node = SCNNode(geometry: box)
+        node.name = "3d bbox"
+        node.position = SCNVector3(particlesBuffer[0].position)
+        sceneView.scene.rootNode.addChildNode(node)
+        
+    
+        print("draw \(objectDetection3dBuffer[0])")
         
         // check and render rgb camera image
         if rgbUniforms.radius > 0 {
@@ -239,27 +369,7 @@ final class Renderer {
             renderEncoder.setFragmentTexture(CVMetalTextureGetTexture(capturedImageTextureY!), index: Int(kTextureY.rawValue))
             renderEncoder.setFragmentTexture(CVMetalTextureGetTexture(capturedImageTextureCbCr!), index: Int(kTextureCbCr.rawValue))
             renderEncoder.drawPrimitives(type: .triangleStrip, vertexStart: 0, vertexCount: 4)
-            
-//            let vertexData: [Float] = [
-//                0, 1,
-//                -1, -1,
-//                1, -1
-//            ]
-//
-//            let vertexDataSize = vertexData.count * MemoryLayout<Float>.size
-//            let vertexBuffer = device.makeBuffer(bytes: vertexData,
-//                                                 length: vertexDataSize,
-//                                                 options: [])
-//
-//            renderEncoder.setDepthStencilState(depthStencilState)
-//            renderEncoder.setRenderPipelineState(bboxPipelineState)
-//            renderEncoder.setVertexBuffer(vertexBuffer, offset: 3, index: 0)
-//            renderEncoder.drawPrimitives(type: .triangle, vertexStart: 0, vertexCount: vertexData.count)
-
         }
-    
-      //  print("render_centroids: \(initAndClustering(points: currentFrame.rawFeaturePoints?.points ?? []))")
-     //   print("render_centroids_num : \(initAndClustering(points: currentFrame.rawFeaturePoints?.points ?? []).count)")
         
         // render particles
         renderEncoder.setDepthStencilState(depthStencilState)
@@ -269,15 +379,22 @@ final class Renderer {
         renderEncoder.setVertexBuffer(particlesBuffer)
 
         renderEncoder.drawPrimitives(type: .point, vertexStart: 0, vertexCount: currentPointCount)
-        renderEncoder.endEncoding()
+        //renderEncoder.endEncoding()
             
-        commandBuffer.present(renderDestination.currentDrawable!)
+        //commandBuffer.present(renderDestination.currentDrawable!)
         commandBuffer.commit()
         
-        print("particle \(particlesBuffer[0].x) \(particlesBuffer[0].y) \(particlesBuffer[0].w) \(particlesBuffer[0].h)")
-        print("particle \(particlesBuffer[1].x) \(particlesBuffer[1].y) \(particlesBuffer[1].w) \(particlesBuffer[1].h)")
-        print("particle \(particlesBuffer[2].x) \(particlesBuffer[2].y) \(particlesBuffer[2].w) \(particlesBuffer[2].h)")
-        print("particle \(particlesBuffer[3].x) \(particlesBuffer[3].y) \(particlesBuffer[3].w) \(particlesBuffer[3].h)")
+        //print("obstacle center : \(objectDetection3dBuffer[0].depth)")
+//        if (centeroidBuffer[0].depth != 100.0) {
+//            print("depth : \(centeroidBuffer[0].depth)")
+//            // depth : 0.1750298
+        
+        // init centroidbuffer
+//        centeroidBuffer[0].position.x = 0.0;
+//        centeroidBuffer[0].position.y = 0.0;
+//        centeroidBuffer[0].position.z = 0.0;
+//        centeroidBuffer[0].count = 0;
+//        centeroidBuffer[0].depth = 100.0;
 
     }
     
@@ -299,7 +416,15 @@ final class Renderer {
         renderEncoder.setDepthStencilState(relaxedStencilState)
         renderEncoder.setRenderPipelineState(unprojectPipelineState)
         renderEncoder.setVertexBuffer(pointCloudUniformsBuffers[currentBufferIndex])
+        //3d bbox
+        //renderEncoder.setVertexBuffer(objectDetection3dBuffer)
+        //2d bbox
         renderEncoder.setVertexBuffer(objectDetectionBuffer)
+        //2d bbox min max info
+        renderEncoder.setVertexBuffer(bboxMinMaxBuffer)
+        //cenroid point info
+        renderEncoder.setVertexBuffer(centeroidBuffer)
+        
         renderEncoder.setVertexBuffer(particlesBuffer)
         renderEncoder.setVertexBuffer(gridPointsBuffer)
         renderEncoder.setVertexTexture(CVMetalTextureGetTexture(capturedImageTextureY!), index: Int(kTextureY.rawValue))
@@ -312,7 +437,6 @@ final class Renderer {
         currentPointCount = min(currentPointCount + gridPointsBuffer.count, maxPoints)
         lastCameraTransform = frame.camera.transform
     
-
     }
     
     public func exportMesh(){
@@ -323,6 +447,26 @@ final class Renderer {
 // MARK: - Metal Helpers
 
 private extension Renderer {
+    
+    // 3d bbox
+    func makeObjectDetectionPipelineState() -> MTLRenderPipelineState? {
+        guard let vertexFunction = library.makeFunction(name: "obstacleDetectionVertex"),
+              let fragmentFunction = library.makeFunction(name: "obstacleDetectionFragment") else {
+                return nil
+        }
+        
+        let descriptor = MTLRenderPipelineDescriptor()
+        descriptor.vertexFunction = vertexFunction
+        descriptor.fragmentFunction = fragmentFunction
+        //descriptor.depthAttachmentPixelFormat = renderDestination.depthStencilPixelFormat
+        //descriptor.colorAttachments[0].pixelFormat = renderDestination.colorPixelFormat
+        
+        descriptor.depthAttachmentPixelFormat = sceneView.depthPixelFormat
+        descriptor.colorAttachments[0].pixelFormat = sceneView.colorPixelFormat
+        
+        return try? device.makeRenderPipelineState(descriptor: descriptor)
+    }
+    
     //0220
     func makeBboxPipelineState() -> MTLRenderPipelineState? {
         
@@ -336,8 +480,10 @@ private extension Renderer {
         //.bgra8Unorm
         //0222
        // descriptor.depthAttachmentPixelFormat = renderDestination.depthStencilPixelFormat
-        descriptor.depthAttachmentPixelFormat = renderDestination.depthStencilPixelFormat
-        descriptor.colorAttachments[0].pixelFormat = renderDestination.colorPixelFormat
+        //descriptor.depthAttachmentPixelFormat = renderDestination.depthStencilPixelFormat
+        //descriptor.colorAttachments[0].pixelFormat = renderDestination.colorPixelFormat
+        descriptor.depthAttachmentPixelFormat = sceneView.depthPixelFormat
+        descriptor.colorAttachments[0].pixelFormat = sceneView.colorPixelFormat
         return try? device.makeRenderPipelineState(descriptor: descriptor)
     }
     
@@ -349,8 +495,10 @@ private extension Renderer {
         let descriptor = MTLRenderPipelineDescriptor()
         descriptor.vertexFunction = vertexFunction
         descriptor.isRasterizationEnabled = false
-        descriptor.depthAttachmentPixelFormat = renderDestination.depthStencilPixelFormat
-        descriptor.colorAttachments[0].pixelFormat = renderDestination.colorPixelFormat
+        //descriptor.depthAttachmentPixelFormat = renderDestination.depthStencilPixelFormat
+        //descriptor.colorAttachments[0].pixelFormat = renderDestination.colorPixelFormat
+        descriptor.depthAttachmentPixelFormat = sceneView.depthPixelFormat
+        descriptor.colorAttachments[0].pixelFormat = sceneView.colorPixelFormat
         
         return try? device.makeRenderPipelineState(descriptor: descriptor)
     }
@@ -364,8 +512,10 @@ private extension Renderer {
         let descriptor = MTLRenderPipelineDescriptor()
         descriptor.vertexFunction = vertexFunction
         descriptor.fragmentFunction = fragmentFunction
-        descriptor.depthAttachmentPixelFormat = renderDestination.depthStencilPixelFormat
-        descriptor.colorAttachments[0].pixelFormat = renderDestination.colorPixelFormat
+        //descriptor.depthAttachmentPixelFormat = renderDestination.depthStencilPixelFormat
+        //descriptor.colorAttachments[0].pixelFormat = renderDestination.colorPixelFormat
+        descriptor.depthAttachmentPixelFormat = sceneView.depthPixelFormat
+        descriptor.colorAttachments[0].pixelFormat = sceneView.colorPixelFormat
         
         return try? device.makeRenderPipelineState(descriptor: descriptor)
     }
@@ -378,8 +528,10 @@ private extension Renderer {
         let descriptor = MTLRenderPipelineDescriptor()
         descriptor.vertexFunction = vertexFunction
         descriptor.fragmentFunction = fragmentFunction
-        descriptor.depthAttachmentPixelFormat = renderDestination.depthStencilPixelFormat
-        descriptor.colorAttachments[0].pixelFormat = renderDestination.colorPixelFormat
+        //descriptor.depthAttachmentPixelFormat = renderDestination.depthStencilPixelFormat
+        //descriptor.colorAttachments[0].pixelFormat = renderDestination.colorPixelFormat
+        descriptor.depthAttachmentPixelFormat = sceneView.depthPixelFormat
+        descriptor.colorAttachments[0].pixelFormat = sceneView.colorPixelFormat
         descriptor.colorAttachments[0].isBlendingEnabled = true
         descriptor.colorAttachments[0].sourceRGBBlendFactor = .sourceAlpha
         descriptor.colorAttachments[0].destinationRGBBlendFactor = .oneMinusSourceAlpha

@@ -17,6 +17,10 @@
                         <rect key="frame" x="0.0" y="0.0" width="1194" height="834"/>
                         <autoresizingMask key="autoresizingMask" widthSizable="YES" heightSizable="YES"/>
                         <subviews>
+                            <arscnView clipsSubviews="YES" userInteractionEnabled="NO" contentMode="scaleToFill" fixedFrame="YES" sceneName="sceneView" translatesAutoresizingMaskIntoConstraints="NO" id="xXc-R6-MRk">
+                                <rect key="frame" x="-2" y="-2" width="1195" height="835"/>
+                                <autoresizingMask key="autoresizingMask" widthSizable="YES" heightSizable="YES"/>
+                            </arscnView>
                             <textView clipsSubviews="YES" multipleTouchEnabled="YES" contentMode="scaleToFill" fixedFrame="YES" text="debug text" textAlignment="natural" translatesAutoresizingMaskIntoConstraints="NO" id="j4D-4b-vtB">
                                 <rect key="frame" x="934" y="24" width="240" height="128"/>
                                 <autoresizingMask key="autoresizingMask" flexibleMaxX="YES" flexibleMaxY="YES"/>
@@ -36,6 +40,7 @@
                     <connections>
                         <outlet property="debugImageView" destination="sKr-yc-kvZ" id="WUR-pH-3cA"/>
                         <outlet property="debugTextView" destination="j4D-4b-vtB" id="vGk-Xv-kLF"/>
+                        <outlet property="sceneView" destination="xXc-R6-MRk" id="ots-kI-sZ2"/>
                     </connections>
                 </viewController>
                 <placeholder placeholderIdentifier="IBFirstResponder" id="SZV-WD-TEh" sceneMemberID="firstResponder"/>
@@ -80,6 +85,21 @@
                 <placeholder placeholderIdentifier="IBFirstResponder" id="Qfh-tj-jYu" userLabel="First Responder" sceneMemberID="firstResponder"/>
             </objects>
             <point key="canvasLocation" x="922" y="134"/>
+        </scene>
+        <!--View Controller-->
+        <scene sceneID="OsX-dc-XQf">
+            <objects>
+                <viewController id="WNK-aj-Nbo" sceneMemberID="viewController">
+                    <view key="view" contentMode="scaleToFill" id="8N6-S6-uHb">
+                        <rect key="frame" x="0.0" y="0.0" width="1194" height="834"/>
+                        <autoresizingMask key="autoresizingMask" widthSizable="YES" heightSizable="YES"/>
+                        <viewLayoutGuide key="safeArea" id="zXB-Vb-J2p"/>
+                        <color key="backgroundColor" systemColor="systemBackgroundColor"/>
+                    </view>
+                </viewController>
+                <placeholder placeholderIdentifier="IBFirstResponder" id="fK1-ua-SgK" userLabel="First Responder" customClass="UIResponder" sceneMemberID="firstResponder"/>
+            </objects>
+            <point key="canvasLocation" x="41" y="-287"/>
         </scene>
     </scenes>
     <resources>

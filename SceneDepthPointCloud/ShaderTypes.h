@@ -24,6 +24,9 @@ enum BufferIndices {
     //0330
     kBboxUniforms = 3,
     kBboxInfo = 4,
+    kObstacleInfo = 5,
+    kBbox3dInfo = 6,
+    kMinMaxInfo = 7
 };
 
 struct RGBUniforms {
@@ -55,12 +58,36 @@ struct ParticleUniforms {
     float w;
     float h;
     float confidence;
+    float depth;
 };
+
+struct ObstacleInfo {
+    simd_float3 position;
+    int count;
+    float depth;
+};
+
 struct BboxInfo {
     float x;
     float y;
     float w;
     float h;
 };
+
+struct BBoxMinMaxInfo {
+    float min_x;
+    float max_x;
+    float min_y;
+    float max_y;
+    float min_z;
+    float max_z;
+};
+
+struct Bbox3dInfo {
+    uint vertexId;
+    simd_float3 position;
+    simd_float3 color;
+};
+
 
 #endif /* ShaderTypes_h */

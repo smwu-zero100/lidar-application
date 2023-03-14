@@ -18,10 +18,11 @@ struct Prediction {
     let boundingBox: CGRect
 }
 
-final class ViewController: UIViewController, ARSCNViewDelegate, ARSessionDelegate,  CLLocationManagerDelegate {
+final class ViewController: UIViewController, ARSCNViewDelegate, CLLocationManagerDelegate {
 
     @IBOutlet weak var debugTextView: UITextView!
     @IBOutlet weak var debugImageView: UIImageView!
+    @IBOutlet var sceneView: ARSCNView!
     
     private let isUIEnabled = true
     private let confidenceControl = UISegmentedControl(items: ["Low", "Medium", "High"])
@@ -32,10 +33,11 @@ final class ViewController: UIViewController, ARSCNViewDelegate, ARSessionDelega
     private let controlsButton = UIButton()
     private var isControlsViewEnabled = true
     
-    private var session = ARSession()
+    //private var session = ARSession()
     
     private var locationManager = CLLocationManager()
     private var renderer: Renderer!
+    private var pointCloudRenderer: Renderer!
     
     private var rosControllerViewProvider: RosControllerViewProvider!
     private var pubController: PubController!
@@ -49,7 +51,7 @@ final class ViewController: UIViewController, ARSCNViewDelegate, ARSessionDelega
     
     public func setPubManager(pubManager: PubManager) {
         self.pubController = pubManager.pubController
-        self.session = pubManager.session
+        //self.session = pubManager.session
         self.locationManager = pubManager.locationManager
     }
     
@@ -69,7 +71,7 @@ final class ViewController: UIViewController, ARSCNViewDelegate, ARSessionDelega
             return
         }
         
-        session.delegate = self
+        //session.delegate = self
         locationManager.delegate = self
         locationManager.desiredAccuracy = kCLLocationAccuracyBest
         locationManager.requestWhenInUseAuthorization()
@@ -77,34 +79,46 @@ final class ViewController: UIViewController, ARSCNViewDelegate, ARSessionDelega
         locationManager.startUpdatingLocation()
         locationManager.startUpdatingHeading()
         
+        // sceneView 설정
+        sceneView.delegate = self
+        sceneView.showsStatistics = true
+        
+        pointCloudRenderer = Renderer(
+            session: sceneView.session,
+            metalDevice: sceneView.device!,
+            sceneView: sceneView)
+        pointCloudRenderer.drawRectResized(size: sceneView.bounds.size)
+        
         // Set the view to use the default device
-        if let view = view as? MTKView {
-            view.device = device
-            
-            view.backgroundColor = UIColor.clear
-            // we need this to enable depth test
-            view.autoResizeDrawable = true
-            view.depthStencilPixelFormat = .depth32Float
-            view.contentScaleFactor = 1
-            view.delegate = self
-            
-            // Configure the renderer to draw to the view
-            renderer = Renderer(session: session, metalDevice: device, renderDestination: view)
-            renderer.drawRectResized(size: view.bounds.size)
-        }
+        
+        
+//        if let view = view as? MTKView {
+//            view.device = device
+//
+//            view.backgroundColor = UIColor.clear
+//            // we need this to enable depth test
+//            view.autoResizeDrawable = true
+//            view.depthStencilPixelFormat = .depth32Float
+//            view.contentScaleFactor = 1
+//            view.delegate = self
+//
+//            // Configure the renderer to draw to the view
+//            renderer = Renderer(session: session, metalDevice: device, renderDestination: view)
+//            renderer.drawRectResized(size: view.bounds.size)
+//        }
         
         self.debugImageView.layer.zPosition = 1
         
         // Confidence control
         confidenceControl.backgroundColor = .white
-        confidenceControl.selectedSegmentIndex = renderer.confidenceThreshold
+        confidenceControl.selectedSegmentIndex = pointCloudRenderer.confidenceThreshold
         confidenceControl.addTarget(self, action: #selector(viewValueChanged), for: .valueChanged)
         
         // RGB Radius control
         rgbRadiusSlider.minimumValue = 0
         rgbRadiusSlider.maximumValue = 1.5
         rgbRadiusSlider.isContinuous = true
-        rgbRadiusSlider.value = renderer.rgbRadius
+        rgbRadiusSlider.value = pointCloudRenderer.rgbRadius
         rgbRadiusSlider.addTarget(self, action: #selector(viewValueChanged), for: .valueChanged)
         
         // ROS Connected Button
@@ -115,7 +129,7 @@ final class ViewController: UIViewController, ARSCNViewDelegate, ARSessionDelega
         self.controlsButton.addTarget(self, action: #selector(controlsButtonPressed), for: .touchUpInside)
         self.controlsButton.translatesAutoresizingMaskIntoConstraints = false
         
-        self.rosControllerViewProvider = RosControllerViewProvider(pubController: self.pubController!, session: self.session)
+        self.rosControllerViewProvider = RosControllerViewProvider(pubController: self.pubController!, session: self.sceneView.session)
         
         let stackView = UIStackView(arrangedSubviews: [rosControllerViewProvider.view!, confidenceControl, rgbRadiusSlider])
         stackView.isHidden = !isUIEnabled
@@ -123,8 +137,8 @@ final class ViewController: UIViewController, ARSCNViewDelegate, ARSessionDelega
         stackView.axis = .vertical
         stackView.spacing = 20
         
-        view.addSubview(stackView)
-        view.addSubview(controlsButton)
+        sceneView.addSubview(stackView)
+        sceneView.addSubview(controlsButton)
         
         NSLayoutConstraint.activate([
             stackView.centerXAnchor.constraint(equalTo: view.centerXAnchor),
@@ -137,6 +151,7 @@ final class ViewController: UIViewController, ARSCNViewDelegate, ARSessionDelega
         
         bufferSize.width = view.bounds.width
         bufferSize.height = view.bounds.height
+        print(bufferSize.width, bufferSize.height)
         
         detectionOverlay = CALayer() // container layer that has all the renderings of the observations
         detectionOverlay.name = "DetectionOverlay"
@@ -146,14 +161,14 @@ final class ViewController: UIViewController, ARSCNViewDelegate, ARSessionDelega
                                          height: view.bounds.height)
         detectionOverlay.position = CGPoint(x: view.bounds.midX, y: view.bounds.midY)
         
-        rootLayer = view.layer
+        rootLayer = sceneView.layer
         detectionOverlay.frame = rootLayer.bounds
         rootLayer.addSublayer(detectionOverlay)
         
         updateLayerGeometry()
         setupVision()
         
-        print(view.bounds)
+        print("view bounds \(view.bounds)")
         
         loopCoreMLUpdate()
     }
@@ -161,7 +176,6 @@ final class ViewController: UIViewController, ARSCNViewDelegate, ARSessionDelega
     @discardableResult
     func setupVision() -> NSError? {
         // Setup Vision parts
-        let error: NSError! = nil
         
         guard let modelURL = Bundle.main.url(forResource: model_name, withExtension: "mlmodelc") else {
             return NSError(domain: "ViewController", code: -1, userInfo: [NSLocalizedDescriptionKey: "Model file is missing"])
@@ -173,7 +187,7 @@ final class ViewController: UIViewController, ARSCNViewDelegate, ARSessionDelega
                     // perform all the UI updates on the main queue
                     if let results = request.results {
                         self.drawVisionRequestResults(results)
-                        if let imageBuffer = self.session.currentFrame?.capturedImage {
+                        if let imageBuffer = self.sceneView.session.currentFrame?.capturedImage {
                             //self.debugImageView.image = UIImage(ciImage: CIImage(cvPixelBuffer: imageBuffer))
                             self.debugImageView.image = UIImage(ciImage: CIImage(cvPixelBuffer: imageBuffer))
 
@@ -188,9 +202,10 @@ final class ViewController: UIViewController, ARSCNViewDelegate, ARSessionDelega
             
         } catch let error as NSError {
             print("Model loading went wrong: \(error)")
+            return error
         }
-
-        return error
+        
+        return nil
     }
     
     override func viewWillAppear(_ animated: Bool) {
@@ -203,14 +218,22 @@ final class ViewController: UIViewController, ARSCNViewDelegate, ARSessionDelega
         
         let selectedVideoFormat = ARWorldTrackingConfiguration.supportedVideoFormats[1]
         configuration.videoFormat = selectedVideoFormat
-        print(selectedVideoFormat) //imageResolution=(1920, 1080) framesPerSecond=(60) for iPhone 12 Pro
+        //print(selectedVideoFormat) //imageResolution=(1920, 1080) framesPerSecond=(60) for iPhone 12 Pro
 
         // Run the view's session
-        session.run(configuration)
+        sceneView.session.run(configuration)
         
         // The screen shouldn't dim during AR experiences.
         UIApplication.shared.isIdleTimerDisabled = true
     }
+    
+    override func viewWillDisappear(_ animated: Bool) {
+        super.viewWillDisappear(animated)
+        
+        // Pause the view's session
+        sceneView.session.pause()
+    }
+
     
     @objc
     private func controlsButtonPressed() {
@@ -223,10 +246,10 @@ final class ViewController: UIViewController, ARSCNViewDelegate, ARSessionDelega
         switch view {
             
         case confidenceControl:
-            renderer.confidenceThreshold = confidenceControl.selectedSegmentIndex
+            pointCloudRenderer.confidenceThreshold = confidenceControl.selectedSegmentIndex
             
         case rgbRadiusSlider:
-            renderer.rgbRadius = rgbRadiusSlider.value
+            pointCloudRenderer.rgbRadius = rgbRadiusSlider.value
             
         default:
             break
@@ -242,8 +265,7 @@ final class ViewController: UIViewController, ARSCNViewDelegate, ARSessionDelega
     override var prefersStatusBarHidden: Bool {
         return true
     }
-    
-    
+
     func session(_ session: ARSession, didUpdate frame: ARFrame, didFailWithError error: Error) {
         // Present an error message to the user.
         guard error is ARError else { return }
@@ -259,8 +281,8 @@ final class ViewController: UIViewController, ARSCNViewDelegate, ARSessionDelega
             let alertController = UIAlertController(title: "The AR session failed.", message: errorMessage, preferredStyle: .alert)
             let restartAction = UIAlertAction(title: "Restart Session", style: .default) { _ in
                 alertController.dismiss(animated: true, completion: nil)
-                if let configuration = self.session.configuration {
-                    self.session.run(configuration, options: .resetSceneReconstruction)
+                if let configuration = self.sceneView.session.configuration {
+                    self.sceneView.session.run(configuration, options: .resetSceneReconstruction)
                 }
             }
             alertController.addAction(restartAction)
@@ -279,8 +301,8 @@ final class ViewController: UIViewController, ARSCNViewDelegate, ARSessionDelega
             // Select only the label with the highest confidence.
             let topLabelObservation = objectObservation.labels[0]
             let objectBounds = VNImageRectForNormalizedRect(objectObservation.boundingBox, Int(bufferSize.width), Int(bufferSize.height))
-            renderer.objectDetectionBuffer[0] = BboxInfo(x: Float(objectBounds.minX), y: Float(objectBounds.minY), w: Float(objectBounds.maxX), h: Float(objectBounds.maxY))
-            print("bounds : \(renderer.objectDetectionBuffer[0])")
+            pointCloudRenderer.objectDetectionBuffer[0] = BboxInfo(x: Float(objectBounds.minX), y: Float(objectBounds.minY), w: Float(objectBounds.maxX), h: Float(objectBounds.maxY))
+            //print("bounds : \(renderer.objectDetectionBuffer[0])")
             let shapeLayer = self.createRoundedRectLayerWithBounds(objectBounds)
             
             let textLayer = self.createTextSubLayerInBounds(objectBounds,
@@ -293,6 +315,7 @@ final class ViewController: UIViewController, ARSCNViewDelegate, ARSessionDelega
             
             //draw yolo bbox
             detectionOverlay.addSublayer(shapeLayer)
+            break;
             
         }
         self.updateLayerGeometry()
@@ -316,7 +339,7 @@ final class ViewController: UIViewController, ARSCNViewDelegate, ARSessionDelega
         
         var classifications = ""
         
-        print(results[0].confidence)
+        //print(results[0].confidence)
         
         for case let foundObject as VNRecognizedObjectObservation in results {
             let bestLabel = foundObject.labels.first! // Label with highest confidence
@@ -423,7 +446,7 @@ final class ViewController: UIViewController, ARSCNViewDelegate, ARSessionDelega
         shapeLayer.bounds = bounds
         shapeLayer.position = CGPoint(x: bounds.midX, y: bounds.midY)
         shapeLayer.name = "Found Object"
-        shapeLayer.backgroundColor = CGColor(colorSpace: CGColorSpaceCreateDeviceRGB(), components: [1.0, 1.0, 0.2, 0.8])
+        shapeLayer.backgroundColor = CGColor(colorSpace: CGColorSpaceCreateDeviceRGB(), components: [1.0, 1.0, 0.2, 0.2])
         return shapeLayer
     }
     
@@ -444,7 +467,7 @@ final class ViewController: UIViewController, ARSCNViewDelegate, ARSessionDelega
     func updateCoreML() {
         ///////////////////////////
         // Get Camera Image as RGB
-        let pixbuff : CVPixelBuffer? = (session.currentFrame?.capturedImage)
+        let pixbuff : CVPixelBuffer? = (self.sceneView.session.currentFrame?.capturedImage)
         if pixbuff == nil { return }
         let ciImage = CIImage(cvPixelBuffer: pixbuff!)
     
@@ -470,6 +493,11 @@ final class ViewController: UIViewController, ARSCNViewDelegate, ARSessionDelega
             print(error)
         }
     }
+    
+    func renderer(_ renderer: SCNSceneRenderer, didRenderScene scene: SCNScene, atTime time: TimeInterval) {
+        pointCloudRenderer.draw()
+    }
+
 }
 
 public func exifOrientationFromDeviceOrientation() -> UIInterfaceOrientation {
@@ -493,19 +521,19 @@ public func exifOrientationFromDeviceOrientation() -> UIInterfaceOrientation {
 
 // MARK: - MTKViewDelegate
 
-extension ViewController: MTKViewDelegate {
-    
-    // Called whenever view changes orientation or layout is changed
-    func mtkView(_ view: MTKView, drawableSizeWillChange size: CGSize) {
-        renderer.drawRectResized(size: size)
-    }
-    
-    // Called whenever the view needs to render
-    func draw(in view: MTKView) {
-        renderer.draw()
-    }
-
-}
+//extension ViewController: MTKViewDelegate {
+//    
+//    // Called whenever view changes orientation or layout is changed
+//    func mtkView(_ view: MTKView, drawableSizeWillChange size: CGSize) {
+//        pointCloudRenderer.drawRectResized(size: size)
+//    }
+//    
+//    // Called whenever the view needs to render
+//    func draw(in view: MTKView) {
+//        pointCloudRenderer.draw()
+//    }
+//
+//}
 
 // MARK: - RenderDestinationProvider
 

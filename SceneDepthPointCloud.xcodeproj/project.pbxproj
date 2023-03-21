@@ -17,6 +17,12 @@
 		681783532988EB5D009F6AF9 /* RosControllerViewProvider.swift in Sources */ = {isa = PBXBuildFile; fileRef = 681783522988EB5D009F6AF9 /* RosControllerViewProvider.swift */; };
 		681783552988F4F4009F6AF9 /* PubManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = 681783542988F4F4009F6AF9 /* PubManager.swift */; };
 		68178357298A3BCF009F6AF9 /* Kmeans.swift in Sources */ = {isa = PBXBuildFile; fileRef = 68178356298A3BCF009F6AF9 /* Kmeans.swift */; };
+		684010F129C2FC6100C20762 /* PointCloudVisualization.swift in Sources */ = {isa = PBXBuildFile; fileRef = 684010F029C2FC6100C20762 /* PointCloudVisualization.swift */; };
+		6888D34729C2F195003D4965 /* art.scnassets in Resources */ = {isa = PBXBuildFile; fileRef = 6888D34629C2F195003D4965 /* art.scnassets */; };
+		6888D34929C2F244003D4965 /* Wireframe.swift in Sources */ = {isa = PBXBuildFile; fileRef = 6888D34829C2F244003D4965 /* Wireframe.swift */; };
+		6888D34B29C2F2E2003D4965 /* DetectedBoundingBox.swift in Sources */ = {isa = PBXBuildFile; fileRef = 6888D34A29C2F2E2003D4965 /* DetectedBoundingBox.swift */; };
+		6888D34D29C2F55F003D4965 /* BoundingBox.swift in Sources */ = {isa = PBXBuildFile; fileRef = 6888D34C29C2F55F003D4965 /* BoundingBox.swift */; };
+		6888D34F29C2F61B003D4965 /* BoundingBoxSide.swift in Sources */ = {isa = PBXBuildFile; fileRef = 6888D34E29C2F61B003D4965 /* BoundingBoxSide.swift */; };
 		68DF6A8F299604B7008BB706 /* YOLOv3Tiny.mlmodel in Sources */ = {isa = PBXBuildFile; fileRef = 68DF6A8E299604B7008BB706 /* YOLOv3Tiny.mlmodel */; };
 		68DF6A91299604CC008BB706 /* ObjectDetector.mlmodel in Sources */ = {isa = PBXBuildFile; fileRef = 68DF6A90299604CB008BB706 /* ObjectDetector.mlmodel */; };
 		68DF6A95299609AA008BB706 /* yolov5.mlmodel in Sources */ = {isa = PBXBuildFile; fileRef = 68DF6A92299609A7008BB706 /* yolov5.mlmodel */; };
@@ -47,6 +53,12 @@
 		681783522988EB5D009F6AF9 /* RosControllerViewProvider.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RosControllerViewProvider.swift; sourceTree = "<group>"; };
 		681783542988F4F4009F6AF9 /* PubManager.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PubManager.swift; sourceTree = "<group>"; };
 		68178356298A3BCF009F6AF9 /* Kmeans.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Kmeans.swift; sourceTree = "<group>"; };
+		684010F029C2FC6100C20762 /* PointCloudVisualization.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PointCloudVisualization.swift; sourceTree = "<group>"; };
+		6888D34629C2F195003D4965 /* art.scnassets */ = {isa = PBXFileReference; lastKnownFileType = wrapper.scnassets; path = art.scnassets; sourceTree = "<group>"; };
+		6888D34829C2F244003D4965 /* Wireframe.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Wireframe.swift; sourceTree = "<group>"; };
+		6888D34A29C2F2E2003D4965 /* DetectedBoundingBox.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DetectedBoundingBox.swift; sourceTree = "<group>"; };
+		6888D34C29C2F55F003D4965 /* BoundingBox.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = BoundingBox.swift; sourceTree = "<group>"; };
+		6888D34E29C2F61B003D4965 /* BoundingBoxSide.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = BoundingBoxSide.swift; sourceTree = "<group>"; };
 		68DF6A8E299604B7008BB706 /* YOLOv3Tiny.mlmodel */ = {isa = PBXFileReference; lastKnownFileType = file.mlmodel; path = YOLOv3Tiny.mlmodel; sourceTree = "<group>"; };
 		68DF6A90299604CB008BB706 /* ObjectDetector.mlmodel */ = {isa = PBXFileReference; lastKnownFileType = file.mlmodel; path = ObjectDetector.mlmodel; sourceTree = "<group>"; };
 		68DF6A92299609A7008BB706 /* yolov5.mlmodel */ = {isa = PBXFileReference; lastKnownFileType = file.mlmodel; path = yolov5.mlmodel; sourceTree = "<group>"; };
@@ -160,6 +172,7 @@
 		E73DD12F24636FEF00D77039 /* SceneDepthPointCloud */ = {
 			isa = PBXGroup;
 			children = (
+				6888D34629C2F195003D4965 /* art.scnassets */,
 				68DF6A8D2996048D008BB706 /* mlmodel */,
 				681783422988C12F009F6AF9 /* ros */,
 				E73DD13024636FEF00D77039 /* AppDelegate.swift */,
@@ -175,6 +188,11 @@
 				E73DD14124636FF100D77039 /* Info.plist */,
 				E73DD14224636FF100D77039 /* SceneDepthPointCloud-Bridging-Header.h */,
 				681783522988EB5D009F6AF9 /* RosControllerViewProvider.swift */,
+				6888D34829C2F244003D4965 /* Wireframe.swift */,
+				6888D34A29C2F2E2003D4965 /* DetectedBoundingBox.swift */,
+				6888D34C29C2F55F003D4965 /* BoundingBox.swift */,
+				6888D34E29C2F61B003D4965 /* BoundingBoxSide.swift */,
+				684010F029C2FC6100C20762 /* PointCloudVisualization.swift */,
 			);
 			path = SceneDepthPointCloud;
 			sourceTree = "<group>";
@@ -238,6 +256,7 @@
 			buildActionMask = 2147483647;
 			files = (
 				E73DD14024636FF100D77039 /* LaunchScreen.storyboard in Resources */,
+				6888D34729C2F195003D4965 /* art.scnassets in Resources */,
 				E73DD13D24636FF100D77039 /* Assets.xcassets in Resources */,
 				E73DD13B24636FEF00D77039 /* Main.storyboard in Resources */,
 			);
@@ -261,8 +280,11 @@
 				681783552988F4F4009F6AF9 /* PubManager.swift in Sources */,
 				68178357298A3BCF009F6AF9 /* Kmeans.swift in Sources */,
 				68DF6A8F299604B7008BB706 /* YOLOv3Tiny.mlmodel in Sources */,
+				6888D34D29C2F55F003D4965 /* BoundingBox.swift in Sources */,
 				6817834B2988C1FF009F6AF9 /* ControlledStaticPublisher.swift in Sources */,
 				68DF6A91299604CC008BB706 /* ObjectDetector.mlmodel in Sources */,
+				684010F129C2FC6100C20762 /* PointCloudVisualization.swift in Sources */,
+				6888D34B29C2F2E2003D4965 /* DetectedBoundingBox.swift in Sources */,
 				681783512988C25E009F6AF9 /* Publisher.swift in Sources */,
 				6817834D2988C22A009F6AF9 /* ControlledPublisher.swift in Sources */,
 				68DF6A95299609AA008BB706 /* yolov5.mlmodel in Sources */,
@@ -270,6 +292,8 @@
 				E7B7223B24807ACA002E43E8 /* MetalBuffer.swift in Sources */,
 				681783492988C1BC009F6AF9 /* RosMessagesUtils.swift in Sources */,
 				E73DD13624636FEF00D77039 /* Renderer.swift in Sources */,
+				6888D34929C2F244003D4965 /* Wireframe.swift in Sources */,
+				6888D34F29C2F61B003D4965 /* BoundingBoxSide.swift in Sources */,
 				E73DD13824636FEF00D77039 /* ViewController.swift in Sources */,
 				681783532988EB5D009F6AF9 /* RosControllerViewProvider.swift in Sources */,
 				E73DD13124636FEF00D77039 /* AppDelegate.swift in Sources */,

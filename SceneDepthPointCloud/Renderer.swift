@@ -15,12 +15,12 @@ import Foundation
 
 final class Renderer {
     // Maximum number of points we store in the point cloud
-    private let maxPoints = 3600
+    private let maxPoints = 5000
     //100_000_00
     // Number of sample points on the grid
-    private let numGridPoints = 600
+    private let numGridPoints = 5000
     // Particle's size in pixels
-    private let particleSize: Float = 10
+    private let particleSize: Float = 5
     // We only use landscape orientation in this app
     private let orientation = UIInterfaceOrientation.landscapeRight
     // Camera's threshold values for detecting when the camera moves so that we can accumulate the points
@@ -108,6 +108,12 @@ final class Renderer {
     
     private lazy var lastCameraTransform = sampleFrame.camera.transform
     
+    var count = 0;
+    var localDepth : Float = 100.0;
+    var localMin : SIMD3<Float> = simd_float3(0, 0, 0);
+    var localMax : SIMD3<Float> = simd_float3(0, 0, 0);
+    var centerPoint : SIMD3<Float> = simd_float3(0, 0, 0);
+    
     // interfaces
     var confidenceThreshold = 1 {
         didSet {
@@ -145,7 +151,7 @@ final class Renderer {
         objectDetectionBuffer = .init(device: device, count: 10, index: kBboxInfo.rawValue )
         objectDetection3dBuffer = .init(device: device, count: 2, index: kBbox3dInfo.rawValue)
         bboxMinMaxBuffer = .init(device: device, count: 1, index: kMinMaxInfo.rawValue)
-        centeroidBuffer = .init(device: device, count: maxPoints, index: kObstacleInfo.rawValue )
+        centeroidBuffer = .init(device: device, count: 1, index: kObstacleInfo.rawValue )
         
         // init MinMaxbuffer
         bboxMinMaxBuffer[0].min_x = 100.0;
@@ -236,47 +242,10 @@ final class Renderer {
         pointCloudUniforms.cameraIntrinsicsInversed = cameraIntrinsicsInversed
     }
 
-    public func DrawLineNode( pointA : SCNVector3,  pointB : SCNVector3, color: UIColor) {
-        var distance = DistanceBetweenPoints(a: pointA, b: pointB);
-        var line = DrawCylinderBetweenPoints(a: pointA, b: pointB, length: distance, radius: 0.001 , radialSegments: 10, color: color);
-        line.look(at: pointB, up: sceneView.scene.rootNode.worldUp, localFront: line.worldUp);
-
-        sceneView.scene.rootNode.addChildNode(line);
-    }
-    
-    public func DrawCylinderBetweenPoints(a : SCNVector3, b : SCNVector3, length : Float, radius : Float, radialSegments : Int, color : UIColor) -> SCNNode {
-           var material = SCNMaterial();
-           material.diffuse.contents = color;
-
-        var cylinderNode = SCNNode();
-            let cylinder = SCNCylinder();
-            cylinder.radius = CGFloat(radius);
-            cylinder.height = CGFloat(length);
-           cylinder.radialSegmentCount = radialSegments;
-        cylinderNode.position = GetMidpoint(a: a, b: b);
-           cylinderNode.geometry?.firstMaterial = material;
-
-           return cylinderNode;
-           }
-    
-    public func DistanceBetweenPoints( a : SCNVector3, b : SCNVector3) -> Float {
-        let vector = SCNVector3(x: (a.x - b.x), y: (a.y - b.y), z:(a.z - b.z));
-        return sqrt(vector.x * vector.x + vector.y * vector.y + vector.z * vector.z);
-    }
-    
-    public func GetMidpoint( a : SCNVector3, b : SCNVector3) -> SCNVector3 {
-        let x = (a.x + b.x) / 2;
-        let y = (a.y + b.y) / 2;
-        let z = (a.z + b.z) / 2;
-
-        return SCNVector3(x, y, z);
-    }
-
-    
     func draw() {
-        sceneView.scene.rootNode.enumerateChildNodes { (node, stop) in
-            node.removeFromParentNode()
-        }
+//        sceneView.scene.rootNode.enumerateChildNodes { (node, stop) in
+//            node.removeFromParentNode()
+//        }
         
         // init MinMaxbuffer
 //        bboxMinMaxBuffer[0].min_x = 10.0;
@@ -285,6 +254,13 @@ final class Renderer {
 //        bboxMinMaxBuffer[0].max_y = -10.0;
 //        bboxMinMaxBuffer[0].min_z = 10.0;
 //        bboxMinMaxBuffer[0].max_z = -10.0;
+        
+//        // init centroidbuffer
+//        centeroidBuffer[0].position.x = 0.0;
+//        centeroidBuffer[0].position.y = 0.0;
+//        centeroidBuffer[0].position.z = 0.0;
+//        centeroidBuffer[0].count = 0;
+//        centeroidBuffer[0].depth = 100.0;
         
         
 //        // init centroidbuffer
@@ -315,42 +291,26 @@ final class Renderer {
         if shouldAccumulate(frame: currentFrame), updateDepthTextures(frame: currentFrame) {
             accumulatePoints(frame: currentFrame, commandBuffer: commandBuffer, renderEncoder: renderEncoder)
         }
-        
-        //print("min max : \(bboxMinMaxBuffer[0])")
-        //print("centroid : \(centeroidBuffer[0])")
-        
-        renderEncoder.setDepthStencilState(relaxedStencilState)
-        renderEncoder.setRenderPipelineState(objectDetectionPipelineState)
-        renderEncoder.setVertexBuffer(bboxMinMaxBuffer)
-        renderEncoder.setVertexBuffer(objectDetection3dBuffer)
-        renderEncoder.drawPrimitives(type: .line, vertexStart: 0, vertexCount: objectDetection3dBuffer.count)
     
-        let width = sqrt((bboxMinMaxBuffer[0].max_x - bboxMinMaxBuffer[0].min_x) * (bboxMinMaxBuffer[0].max_x - bboxMinMaxBuffer[0].min_x));
-        let height = sqrt((bboxMinMaxBuffer[0].max_y - bboxMinMaxBuffer[0].min_y) * (bboxMinMaxBuffer[0].max_y - bboxMinMaxBuffer[0].min_y));
-        let length = sqrt((bboxMinMaxBuffer[0].max_z - bboxMinMaxBuffer[0].min_z) * (bboxMinMaxBuffer[0].max_z - bboxMinMaxBuffer[0].min_z));
-        
-        print("---------------------------")
-        print(width, height, length)
-        print(centeroidBuffer[0].position)
-        print(centeroidBuffer[0].count)
-        print(centeroidBuffer[0].position.x / Float(centeroidBuffer[0].count))
-        print(centeroidBuffer[0].position.y / Float(centeroidBuffer[0].count))
-        print(centeroidBuffer[0].position.z / Float(centeroidBuffer[0].count))
-        print(particlesBuffer[0].position)
+//
+//        let width = sqrt((bboxMinMaxBuffer[0].max_x - bboxMinMaxBuffer[0].min_x) * (bboxMinMaxBuffer[0].max_x - bboxMinMaxBuffer[0].min_x));
+//        let height = sqrt((bboxMinMaxBuffer[0].max_y - bboxMinMaxBuffer[0].min_y) * (bboxMinMaxBuffer[0].max_y - bboxMinMaxBuffer[0].min_y));
+//        let length = sqrt((bboxMinMaxBuffer[0].max_z - bboxMinMaxBuffer[0].min_z) * (bboxMinMaxBuffer[0].max_z - bboxMinMaxBuffer[0].min_z));
+
+//        print("---------------------------")
+////        print(width, height, length)
+//        print(centeroidBuffer[0].position)
+//        print(centeroidBuffer[0].count)
+//        
+//        print(centeroidBuffer[0].position.x / Float(centeroidBuffer[0].count))
+//        print(centeroidBuffer[0].position.y / Float(centeroidBuffer[0].count))
+//        print(centeroidBuffer[0].position.z / Float(centeroidBuffer[0].count))
+////        print(particlesBuffer[0].position)
         
         particlesBuffer[0].position.x = centeroidBuffer[0].position.x / Float(centeroidBuffer[0].count)
         particlesBuffer[0].position.y = centeroidBuffer[0].position.y / Float(centeroidBuffer[0].count)
         particlesBuffer[0].position.z = centeroidBuffer[0].position.z / Float(centeroidBuffer[0].count)
-        
-        let box = SCNBox(width: CGFloat(width), height: CGFloat((height)), length: CGFloat(width), chamferRadius: 0)
-        box.firstMaterial?.diffuse.contents  = UIColor(red: 30.0 , green: 150.0, blue: 30.0, alpha: 0.6)
-        let node = SCNNode(geometry: box)
-        node.name = "3d bbox"
-        node.position = SCNVector3(particlesBuffer[0].position)
-        sceneView.scene.rootNode.addChildNode(node)
-        
     
-        print("draw \(objectDetection3dBuffer[0])")
         
         // check and render rgb camera image
         if rgbUniforms.radius > 0 {
@@ -384,18 +344,34 @@ final class Renderer {
         //commandBuffer.present(renderDestination.currentDrawable!)
         commandBuffer.commit()
         
-        //print("obstacle center : \(objectDetection3dBuffer[0].depth)")
-//        if (centeroidBuffer[0].depth != 100.0) {
-//            print("depth : \(centeroidBuffer[0].depth)")
-//            // depth : 0.1750298
+        count = 0;
+        localDepth = 100.0;
+        localMax = SIMD3(0, 0, 0);
+        localMin = SIMD3(0, 0, 0);
+        centerPoint = SIMD3(0, 0, 0);
         
-        // init centroidbuffer
-//        centeroidBuffer[0].position.x = 0.0;
-//        centeroidBuffer[0].position.y = 0.0;
-//        centeroidBuffer[0].position.z = 0.0;
-//        centeroidBuffer[0].count = 0;
-//        centeroidBuffer[0].depth = 100.0;
-
+        for i in 1...particlesBuffer.count-1 {
+            
+            var point_temp = particlesBuffer[i];
+            
+            if(point_temp.color == simd_float3(x: 255, y: 0, z: 0)) {
+                count = count + 1
+                centerPoint = centerPoint + point_temp.position
+                
+                if (point_temp.depth < localDepth){
+                    localDepth = point_temp.depth
+                }
+                
+                localMin = min(localMin, SIMD3(x: point_temp.position.x, y: point_temp.position.y, z: point_temp.position.z))
+                localMax = max(localMax, SIMD3(x: point_temp.position.x, y: point_temp.position.y, z: point_temp.position.z))
+                
+            }
+        }
+        
+        centerPoint.x = centerPoint.x / Float(count);
+        centerPoint.y = centerPoint.y / Float(count);
+        centerPoint.z = centerPoint.z / Float(count);
+        
     }
     
     private func shouldAccumulate(frame: ARFrame) -> Bool {

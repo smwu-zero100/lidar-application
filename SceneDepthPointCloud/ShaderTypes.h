@@ -63,6 +63,7 @@ struct ParticleUniforms {
 
 struct ObstacleInfo {
     simd_float3 position;
+    simd_float3 color;
     int count;
     float depth;
 };
@@ -84,9 +85,10 @@ struct BBoxMinMaxInfo {
 };
 
 struct Bbox3dInfo {
-    uint vertexId;
     simd_float3 position;
     simd_float3 color;
+    int count;
+    float depth;
 };
 
 

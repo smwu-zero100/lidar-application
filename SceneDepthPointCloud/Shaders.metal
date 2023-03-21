@@ -121,11 +121,14 @@ vertex void unprojectVertex(uint vertexID [[vertex_id]],
                 bboxMinMaxInfo[0].max_z = position.z;
             }
             
-            obstacleInfo[0].position.x =  (obstacleInfo[0].position.x + position.x);
-            obstacleInfo[0].position.y = (obstacleInfo[0].position.y + position.y);
-            obstacleInfo[0].position.z = (obstacleInfo[0].position.z + position.z);
-            obstacleInfo[0].count = obstacleInfo[0].count + 1;
-            obstacleInfo[0].depth = depth;
+            if(depth < obstacleInfo[0].depth) {
+                obstacleInfo[0].position.x = position.x;
+                obstacleInfo[0].position.y = position.y; ///(obstacleInfo[0].position.y + position.y);
+                obstacleInfo[0].position.z = position.z; ///(obstacleInfo[0].position.z + position.z);
+                //obstacleInfo[0].count = obstacleInfo[0].count + 1;
+                obstacleInfo[0].depth = depth;
+            }
+            
             
         }else{
             particleUniforms[currentPointIndex].color = sampledColor;
@@ -139,172 +142,26 @@ vertex void unprojectVertex(uint vertexID [[vertex_id]],
     particleUniforms[currentPointIndex].h = h;
     particleUniforms[currentPointIndex].position = position.xyz;
     particleUniforms[currentPointIndex].depth = depth;
-
     
-    if(currentPointIndex == 0) {
-        particleUniforms[currentPointIndex].position.x = obstacleInfo[0].position.x/obstacleInfo[0].count;
-        particleUniforms[currentPointIndex].position.y = obstacleInfo[0].position.y/obstacleInfo[0].count;
-        particleUniforms[currentPointIndex].position.z = obstacleInfo[0].position.z/obstacleInfo[0].count;
-        particleUniforms[currentPointIndex].color = simd_float3(0,255,0);
+    
+    if (currentPointIndex == 0) {
+        particleUniforms[0].position.x = obstacleInfo[0].position.x;
+        particleUniforms[0].position.y = obstacleInfo[0].position.y;
+        particleUniforms[0].position.z = obstacleInfo[0].position.z;
+        particleUniforms[0].color = simd_float3(255, 255, 0);
     }
     
-    if(currentPointIndex == 1) { // A
-        particleUniforms[currentPointIndex].position.x = bboxMinMaxInfo[0].max_x;
-        particleUniforms[currentPointIndex].position.y = bboxMinMaxInfo[0].max_y;
-        particleUniforms[currentPointIndex].position.z = bboxMinMaxInfo[0].max_z;
-        particleUniforms[currentPointIndex].color = simd_float3(125,62,255);
-    }
-    
-    if(currentPointIndex == 2) { // B
-        particleUniforms[currentPointIndex].position.x = bboxMinMaxInfo[0].max_x;
-        particleUniforms[currentPointIndex].position.y = bboxMinMaxInfo[0].min_y;
-        particleUniforms[currentPointIndex].position.z = bboxMinMaxInfo[0].max_z;
-        particleUniforms[currentPointIndex].color = simd_float3(0,0,255);
-    }
-    
-    if(currentPointIndex == 3) { // C
-        particleUniforms[currentPointIndex].position.x = bboxMinMaxInfo[0].min_x;
-        particleUniforms[currentPointIndex].position.y = bboxMinMaxInfo[0].min_y;
-        particleUniforms[currentPointIndex].position.z = bboxMinMaxInfo[0].max_z;
-        particleUniforms[currentPointIndex].color = simd_float3(0,0,255);
-    }
-    
-    if(currentPointIndex == 4) { // D
-        particleUniforms[currentPointIndex].position.x = bboxMinMaxInfo[0].min_x;
-        particleUniforms[currentPointIndex].position.y = bboxMinMaxInfo[0].max_y;
-        particleUniforms[currentPointIndex].position.z = bboxMinMaxInfo[0].max_z;
-        particleUniforms[currentPointIndex].color = simd_float3(0,0,255);
-    }
-    
-    if(currentPointIndex == 5) { // Q
-        particleUniforms[currentPointIndex].position.x = bboxMinMaxInfo[0].max_x;
-        particleUniforms[currentPointIndex].position.y = bboxMinMaxInfo[0].max_y;
-        particleUniforms[currentPointIndex].position.z = bboxMinMaxInfo[0].min_z;
-        particleUniforms[currentPointIndex].color = simd_float3(0,0,255);
-    }
-    
-    if(currentPointIndex == 6) { // S
-        particleUniforms[currentPointIndex].position.x = bboxMinMaxInfo[0].max_x;
-        particleUniforms[currentPointIndex].position.y = bboxMinMaxInfo[0].min_y;
-        particleUniforms[currentPointIndex].position.z = bboxMinMaxInfo[0].min_z;
-        particleUniforms[currentPointIndex].color = simd_float3(0,0,255);
-    }
-    
-    if(currentPointIndex == 7) { // S
-        particleUniforms[currentPointIndex].position.x = bboxMinMaxInfo[0].min_x;
-        particleUniforms[currentPointIndex].position.y = bboxMinMaxInfo[0].max_y;
-        particleUniforms[currentPointIndex].position.z = bboxMinMaxInfo[0].min_z;
-        particleUniforms[currentPointIndex].color = simd_float3(0,0,255);
-    }
-    
-    if(currentPointIndex == 8) { // S
-        particleUniforms[currentPointIndex].position.x = bboxMinMaxInfo[0].min_x;
-        particleUniforms[currentPointIndex].position.y = bboxMinMaxInfo[0].min_y;
-        particleUniforms[currentPointIndex].position.z = bboxMinMaxInfo[0].min_z;
-        particleUniforms[currentPointIndex].color = simd_float3(0,0,255);
+    if (currentPointIndex == 1) {
+        particleUniforms[1].position.x = obstacleInfo[0].position.x;
+        particleUniforms[1].position.y = obstacleInfo[0].position.y;
+        particleUniforms[1].position.z = obstacleInfo[0].position.z;
+        particleUniforms[0].color = simd_float3(0, 255, 255);
     }
     
     
    // particleUniforms[currentPointIndex].color = sampledColor;
     particleUniforms[currentPointIndex].confidence = confidence;
 }
-
-vertex Bbox3dVertexOut obstacleDetectionVertex(uint vertexID [[vertex_id]],
-                              device BBoxMinMaxInfo &minMaxInfo [[buffer(kMinMaxInfo)]],
-                              device Bbox3dInfo *bbox3dInfo [[buffer(kBbox3dInfo)]]) {
-    
-    Bbox3dVertexOut outVertex;
-    /*
-     * A - B - C - D - A - Q - R - D - C - T - R - Q - S - B - S - T
-     * 0 - 1 - 2 - 3 - 4 - 5 - 6 - 7 - 8 - 9 - 10 - 11 - 12 - 13 - 14 - 15
-     */
-    
-    if(vertexID == 0) {
-        outVertex.position.x = -0.025711672; //minMaxInfo.max_x;
-        outVertex.position.y = -0.14813556; //minMaxInfo.max_y;
-        outVertex.position.z = -0.116113186; //minMaxInfo.max_z;
-    }else if (vertexID == 1) {
-        outVertex.position.x = -0.025711672; //minMaxInfo.max_x;
-        outVertex.position.y = -0.17169493; //minMaxInfo.min_y;
-        outVertex.position.z = -0.116113186; //minMaxInfo.max_z;
-    }
-//    }else if (vertexID == 2) {
-//        outVertex.position.x = 0.0; //minMaxInfo.min_x;
-//        outVertex.position.y = 0.0; //minMaxInfo.min_y;
-//        outVertex.position.z = -1.0; //minMaxInfo.max_z;
-//    }else if (vertexID == 3) {
-//        outVertex.position.x = 0.0; //minMaxInfo.min_x;
-//        outVertex.position.y = -1.0; //minMaxInfo.max_y;
-//        outVertex.position.z = -1.0; //minMaxInfo.max_z;
-//    }
-    
-//    switch (int(vertexID)) {
-//    case 0: // A
-//    case 4:
-//        outVertex.position.x = minMaxInfo.max_x;
-//        outVertex.position.y = minMaxInfo.max_y;
-//        outVertex.position.z = minMaxInfo.max_z;
-//        break;
-//    case 1: // B
-//    case 13:
-//        outVertex.position.x = minMaxInfo.max_x;
-//        outVertex.position.y = minMaxInfo.min_y;
-//        outVertex.position.z = minMaxInfo.max_z;
-//        break;
-//    case 2: // C
-//    case 8:
-//        outVertex.position.x = minMaxInfo.min_x;
-//        outVertex.position.y = minMaxInfo.min_y;
-//        outVertex.position.z = minMaxInfo.max_z;
-//        break;
-//    case 3: // D
-//    case 7:
-//        outVertex.position.x = minMaxInfo.min_x;
-//        outVertex.position.y = minMaxInfo.max_y;
-//        outVertex.position.z = minMaxInfo.max_z;
-//        break;
-//    case 5: // Q
-//    case 11:
-//        outVertex.position.x = minMaxInfo.max_x;
-//        outVertex.position.y = minMaxInfo.max_y;
-//        outVertex.position.z = minMaxInfo.min_z;
-//        break;
-//    case 14: // S
-//    case 12:
-//        outVertex.position.x = minMaxInfo.max_x;
-//        outVertex.position.y = minMaxInfo.min_y;
-//        outVertex.position.z = minMaxInfo.min_z;
-//        break;
-//    case 9: // T
-//    case 15:
-//        outVertex.position.x = minMaxInfo.min_x;
-//        outVertex.position.y = minMaxInfo.max_y;
-//        outVertex.position.z = minMaxInfo.min_z;
-//        break;
-//    case 6: // R
-//    case 10:
-//        outVertex.position.x = minMaxInfo.min_x;
-//        outVertex.position.y = minMaxInfo.min_y;
-//        outVertex.position.z = minMaxInfo.min_z;
-//        break;
-//    }
-    
-    bbox3dInfo[vertexID].vertexId = vertexID;
-    bbox3dInfo[vertexID].position.x = outVertex.position.x;
-    bbox3dInfo[vertexID].position.y = outVertex.position.y;
-    bbox3dInfo[vertexID].position.z = outVertex.position.z;
-    bbox3dInfo[vertexID].color = float3(0,0,255);
-    outVertex.color = float4(0,0,255,0);
-    
-    return outVertex;
-}
-
-fragment half4 obstacleDetectionFragment(Bbox3dVertexOut inFrag [[stage_in]])
-{
-//  return half4(1, 0, 0, 1);
-  
-    return half4(inFrag.color);
-};
 
 vertex RGBVertexOut rgbVertex(uint vertexID [[vertex_id]],
                               constant RGBUniforms &uniforms [[buffer(0)]]) {

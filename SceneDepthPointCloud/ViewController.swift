@@ -7,6 +7,7 @@ Main view controller for the AR experience.
 
 import UIKit
 import Metal
+import SceneKit
 import MetalKit
 import ARKit
 import CoreLocation
@@ -48,6 +49,7 @@ final class ViewController: UIViewController, ARSCNViewDelegate, CLLocationManag
     var visionRequests = [VNRequest]()
     let dispatchQueueML = DispatchQueue(label: "com.cherrrity.coreML-with-lidar")
     var latestPrediction : String = "…"
+    var lastLabel: String = ""
     
     public func setPubManager(pubManager: PubManager) {
         self.pubController = pubManager.pubController
@@ -56,11 +58,20 @@ final class ViewController: UIViewController, ARSCNViewDelegate, CLLocationManag
     }
     
     var model_name = "YOLOv3TinyInt8LUT"
+    //var model_name = "yolov5_FP16"
     //YOLOv3TinyInt8LUT
     var rootLayer: CALayer! = nil
     var detectionOverlay: CALayer! = nil
     // Vision parts
     private var requests = [VNRequest]()
+    
+    private var boundingBox: BoundingBox?
+    private var referenceObjectPoints: [SIMD3<Float>] = []
+    private var currentFramePoints: [SIMD3<Float>] = []
+    private var renderedPoints: [SIMD3<Float>] = []
+    private var renderedPreliminaryPoints: [SIMD3<Float>] = []
+    private var pointNode = SCNNode()
+    private var preliminaryPointsNode = SCNNode()
     
     
     override func viewDidLoad() {
@@ -171,6 +182,35 @@ final class ViewController: UIViewController, ARSCNViewDelegate, CLLocationManag
         print("view bounds \(view.bounds)")
         
         loopCoreMLUpdate()
+        
+        let boundingBox = BoundingBox(sceneView)
+        self.boundingBox = boundingBox
+        self.sceneView.scene.rootNode.addChildNode(boundingBox)
+    }
+    
+    func updateOnEveryFrame() {
+        
+        renderedPoints = self.sceneView.session.currentFrame?.rawFeaturePoints?.points ?? []
+        
+        print("rawFeaturePoints : \(renderedPoints.count)")
+        
+        //renderedPreliminaryPoints = []
+        
+        // Abort if the bounding box has no extent yet
+        guard boundingBox!.extent.x > 0 else { return }
+        
+        // Check which of the reference object's points and current frame's points are within the bounding box.
+        // Note: The creation of the latest ARReferenceObject happens at a lower frequency
+        //       than rendering and updates of the bounding box, so some of the points
+        //       may no longer be inside of the box.
+        
+        //renderedPoints = referenceObjectPoints.filter { boundingBox!.contains($0) }
+        //print("renderedPoints : \(renderedPoints.count)")
+        //renderedPreliminaryPoints = currentFramePoints.filter { boundingBox!.contains($0) }
+        
+        self.pointNode.geometry = createVisualization(for: renderedPoints, color: UIColor(displayP3Red: 23/255, green: 234/255, blue: 103/255, alpha: 1), size: 12)
+        
+        //self.preliminaryPointsNode.geometry = createVisualization(for: renderedPreliminaryPoints, color: .appLightYellow, size: 12)
     }
     
     @discardableResult
@@ -187,6 +227,21 @@ final class ViewController: UIViewController, ARSCNViewDelegate, CLLocationManag
                     // perform all the UI updates on the main queue
                     if let results = request.results {
                         self.drawVisionRequestResults(results)
+                        
+                        if let points = self.sceneView.session.currentFrame?.rawFeaturePoints {
+                            // Automatically adjust the size of the bounding box.
+                            //print("point 0 \(points.points[0])")
+                            
+                            let simdPosition = self.pointCloudRenderer.centerPoint
+                            let localMin = self.pointCloudRenderer.localMin
+                            let localMax = self.pointCloudRenderer.localMax
+                            print("max \(localMax)")
+                            print("min \(localMin)")
+                            print("extent : \(localMax - localMin)")
+                            self.boundingBox?.simdPosition = simdPosition
+                            self.boundingBox?.fitOverPointCloud(points, focusPoint: simdPosition)
+                        }
+                        
                         if let imageBuffer = self.sceneView.session.currentFrame?.capturedImage {
                             //self.debugImageView.image = UIImage(ciImage: CIImage(cvPixelBuffer: imageBuffer))
                             self.debugImageView.image = UIImage(ciImage: CIImage(cvPixelBuffer: imageBuffer))
@@ -300,8 +355,14 @@ final class ViewController: UIViewController, ARSCNViewDelegate, CLLocationManag
             }
             // Select only the label with the highest confidence.
             let topLabelObservation = objectObservation.labels[0]
+            if (lastLabel != topLabelObservation.identifier) {
+                lastLabel = topLabelObservation.identifier;
+                //self.boundingBox = BoundingBox(sceneView);
+            }
+                
             let objectBounds = VNImageRectForNormalizedRect(objectObservation.boundingBox, Int(bufferSize.width), Int(bufferSize.height))
             pointCloudRenderer.objectDetectionBuffer[0] = BboxInfo(x: Float(objectBounds.minX), y: Float(objectBounds.minY), w: Float(objectBounds.maxX), h: Float(objectBounds.maxY))
+            
             //print("bounds : \(renderer.objectDetectionBuffer[0])")
             let shapeLayer = self.createRoundedRectLayerWithBounds(objectBounds)
             
@@ -318,8 +379,10 @@ final class ViewController: UIViewController, ARSCNViewDelegate, CLLocationManag
             break;
             
         }
+        
         self.updateLayerGeometry()
         CATransaction.commit()
+        
     }
     
     func classificationCompleteHandler(request: VNRequest, error: Error?) {
@@ -418,6 +481,7 @@ final class ViewController: UIViewController, ARSCNViewDelegate, CLLocationManag
         
         CATransaction.commit()
         
+        
     }
     
     func createTextSubLayerInBounds(_ bounds: CGRect, identifier: String, confidence: VNConfidence) -> CATextLayer {
@@ -496,6 +560,36 @@ final class ViewController: UIViewController, ARSCNViewDelegate, CLLocationManag
     
     func renderer(_ renderer: SCNSceneRenderer, didRenderScene scene: SCNScene, atTime time: TimeInterval) {
         pointCloudRenderer.draw()
+        updateOnEveryFrame()
+        self.boundingBox?.updateVisualization()
+    }
+    
+    func createVisualization(for points: [SIMD3<Float>], color: UIColor, size: CGFloat) -> SCNGeometry? {
+        guard !points.isEmpty else { return nil }
+        
+        let stride = MemoryLayout<SIMD3<Float>>.size
+        let pointData = Data(bytes: points, count: stride * points.count)
+        
+        // Create geometry source
+        let source = SCNGeometrySource(data: pointData,
+                                       semantic: SCNGeometrySource.Semantic.vertex,
+                                       vectorCount: points.count,
+                                       usesFloatComponents: true,
+                                       componentsPerVector: 3,
+                                       bytesPerComponent: MemoryLayout<Float>.size,
+                                       dataOffset: 0,
+                                       dataStride: stride)
+        
+        // Create geometry element
+        let element = SCNGeometryElement(data: nil, primitiveType: .point, primitiveCount: points.count, bytesPerIndex: 0)
+        element.pointSize = 0.001
+        element.minimumPointScreenSpaceRadius = size
+        element.maximumPointScreenSpaceRadius = size
+        
+        let pointsGeometry = SCNGeometry(sources: [source], elements: [element])
+        pointsGeometry.materials = [SCNMaterial.material(withDiffuse: color)]
+        
+        return pointsGeometry
     }
 
 }

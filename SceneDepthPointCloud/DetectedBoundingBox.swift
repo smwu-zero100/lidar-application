@@ -1,10 +1,3 @@
-/*
-See LICENSE folder for this sample’s licensing information.
-
-Abstract:
-A simple visualiation of a 3D bounding box, used when testing detection of a scanned object.
-*/
-
 import Foundation
 import ARKit
 

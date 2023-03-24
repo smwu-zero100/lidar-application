@@ -1,10 +1,3 @@
-/*
-See LICENSE folder for this sample’s licensing information.
-
-Abstract:
-An interactive visualization of a bounding box in 3D space with movement and resizing controls.
-*/
-
 import Foundation
 import ARKit
 

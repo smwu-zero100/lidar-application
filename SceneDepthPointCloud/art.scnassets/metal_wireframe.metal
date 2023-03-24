@@ -1,14 +1,3 @@
-//
-//  metal_wireframe.metal
-//  SceneDepthPointCloud
-//
-//  Created by Yejin on 2023/03/16.
-//  Copyright © 2023 Apple. All rights reserved.
-//
-
-//#include <metal_stdlib>
-//using namespace metal;
-
 #pragma transparent
 #pragma body
 

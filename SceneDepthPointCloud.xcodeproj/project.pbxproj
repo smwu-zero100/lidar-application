@@ -16,7 +16,6 @@
 		681783512988C25E009F6AF9 /* Publisher.swift in Sources */ = {isa = PBXBuildFile; fileRef = 681783502988C25E009F6AF9 /* Publisher.swift */; };
 		681783532988EB5D009F6AF9 /* RosControllerViewProvider.swift in Sources */ = {isa = PBXBuildFile; fileRef = 681783522988EB5D009F6AF9 /* RosControllerViewProvider.swift */; };
 		681783552988F4F4009F6AF9 /* PubManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = 681783542988F4F4009F6AF9 /* PubManager.swift */; };
-		68178357298A3BCF009F6AF9 /* Kmeans.swift in Sources */ = {isa = PBXBuildFile; fileRef = 68178356298A3BCF009F6AF9 /* Kmeans.swift */; };
 		684010F129C2FC6100C20762 /* PointCloudVisualization.swift in Sources */ = {isa = PBXBuildFile; fileRef = 684010F029C2FC6100C20762 /* PointCloudVisualization.swift */; };
 		6888D34729C2F195003D4965 /* art.scnassets in Resources */ = {isa = PBXBuildFile; fileRef = 6888D34629C2F195003D4965 /* art.scnassets */; };
 		6888D34929C2F244003D4965 /* Wireframe.swift in Sources */ = {isa = PBXBuildFile; fileRef = 6888D34829C2F244003D4965 /* Wireframe.swift */; };
@@ -52,7 +51,6 @@
 		681783502988C25E009F6AF9 /* Publisher.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Publisher.swift; sourceTree = "<group>"; };
 		681783522988EB5D009F6AF9 /* RosControllerViewProvider.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RosControllerViewProvider.swift; sourceTree = "<group>"; };
 		681783542988F4F4009F6AF9 /* PubManager.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PubManager.swift; sourceTree = "<group>"; };
-		68178356298A3BCF009F6AF9 /* Kmeans.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Kmeans.swift; sourceTree = "<group>"; };
 		684010F029C2FC6100C20762 /* PointCloudVisualization.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PointCloudVisualization.swift; sourceTree = "<group>"; };
 		6888D34629C2F195003D4965 /* art.scnassets */ = {isa = PBXFileReference; lastKnownFileType = wrapper.scnassets; path = art.scnassets; sourceTree = "<group>"; };
 		6888D34829C2F244003D4965 /* Wireframe.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Wireframe.swift; sourceTree = "<group>"; };
@@ -105,7 +103,6 @@
 				6817834E2988C240009F6AF9 /* RosInterface.swift */,
 				681783502988C25E009F6AF9 /* Publisher.swift */,
 				681783542988F4F4009F6AF9 /* PubManager.swift */,
-				68178356298A3BCF009F6AF9 /* Kmeans.swift */,
 			);
 			path = ros;
 			sourceTree = "<group>";
@@ -278,7 +275,6 @@
 				E7B7223D24809D1E002E43E8 /* Helpers.swift in Sources */,
 				68DF6A9D29965117008BB706 /* YOLOv3TinyInt8LUT.mlmodel in Sources */,
 				681783552988F4F4009F6AF9 /* PubManager.swift in Sources */,
-				68178357298A3BCF009F6AF9 /* Kmeans.swift in Sources */,
 				68DF6A8F299604B7008BB706 /* YOLOv3Tiny.mlmodel in Sources */,
 				6888D34D29C2F55F003D4965 /* BoundingBox.swift in Sources */,
 				6817834B2988C1FF009F6AF9 /* ControlledStaticPublisher.swift in Sources */,
@@ -451,14 +447,14 @@
 				CODE_SIGN_IDENTITY = "iPhone Developer";
 				CODE_SIGN_STYLE = Automatic;
 				CURRENT_PROJECT_VERSION = 1;
-				DEVELOPMENT_TEAM = 9774Z87S2T;
+				DEVELOPMENT_TEAM = 4R57F3V5M9;
 				INFOPLIST_FILE = SceneDepthPointCloud/Info.plist;
 				LD_RUNPATH_SEARCH_PATHS = (
 					"$(inherited)",
 					"@executable_path/Frameworks",
 				);
 				MARKETING_VERSION = 1.0;
-				PRODUCT_BUNDLE_IDENTIFIER = "com.yejin.aejin-test";
+				PRODUCT_BUNDLE_IDENTIFIER = com.aejin;
 				PRODUCT_NAME = "Point Cloud";
 				PROVISIONING_PROFILE_SPECIFIER = "";
 				SDKROOT = iphoneos;
@@ -480,14 +476,14 @@
 				CODE_SIGN_IDENTITY = "iPhone Developer";
 				CODE_SIGN_STYLE = Automatic;
 				CURRENT_PROJECT_VERSION = 1;
-				DEVELOPMENT_TEAM = 9774Z87S2T;
+				DEVELOPMENT_TEAM = 4R57F3V5M9;
 				INFOPLIST_FILE = SceneDepthPointCloud/Info.plist;
 				LD_RUNPATH_SEARCH_PATHS = (
 					"$(inherited)",
 					"@executable_path/Frameworks",
 				);
 				MARKETING_VERSION = 1.0;
-				PRODUCT_BUNDLE_IDENTIFIER = "com.yejin.aejin-test";
+				PRODUCT_BUNDLE_IDENTIFIER = com.aejin;
 				PRODUCT_NAME = "Point Cloud";
 				PROVISIONING_PROFILE_SPECIFIER = "";
 				SDKROOT = iphoneos;

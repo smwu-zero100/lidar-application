@@ -1,11 +1,3 @@
-
-/*
-See LICENSE folder for this sample’s licensing information.
-
-Abstract:
-A visualization of the edges of a 3D box.
-*/
-
 import Foundation
 import SceneKit
 

@@ -1,18 +1,8 @@
-/*
-See LICENSE folder for this sample’s licensing information.
-
-Abstract:
-A generalized interactive visualization of a 3D point cloud.
-*/
-
 import SceneKit
 
-// This is a protocol that should be implemented by all point cloud classes (ScannedPointCloud, DetectedPointCloud).
 protocol PointCloud {
     func createVisualization(for points: [SIMD3<Float>], color: UIColor, size: CGFloat) -> SCNGeometry?
 }
-
-// All classes implementing the PointCloud protocol can benefit from this createVisualization implementation.
 extension PointCloud {
     func createVisualization(for points: [SIMD3<Float>], color: UIColor, size: CGFloat) -> SCNGeometry? {
         guard !points.isEmpty else { return nil }

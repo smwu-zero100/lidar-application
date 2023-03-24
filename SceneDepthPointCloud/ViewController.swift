@@ -1,10 +1,3 @@
-/*
-See LICENSE folder for this sample’s licensing information.
-
-Abstract:
-Main view controller for the AR experience.
-*/
-
 import UIKit
 import Metal
 import SceneKit
@@ -50,14 +43,8 @@ final class ViewController: UIViewController, ARSCNViewDelegate, CLLocationManag
     let dispatchQueueML = DispatchQueue(label: "com.cherrrity.coreML-with-lidar")
     var latestPrediction : String = "…"
     var lastLabel: String = ""
-    
-    var obstacle_depth:Float = 0.0
     var obstacle_width:Float = 0.0
-    
-    //var model_name = "ObjectDetector"
     var model_name = "YOLOv3TinyInt8LUT"
-    //var model_name = "yolov5_FP16"
-    //YOLOv3TinyInt8LUT
     var rootLayer: CALayer! = nil
     var detectionOverlay: CALayer! = nil
     // Vision parts
@@ -173,8 +160,7 @@ final class ViewController: UIViewController, ARSCNViewDelegate, CLLocationManag
         guard boundingBox1!.extent.x > 0 else { return }
         
         self.pointNode.geometry = createVisualization(for: renderedPoints, color: UIColor(displayP3Red: 23/255, green: 234/255, blue: 103/255, alpha: 1), size: 12)
-        
-        //self.preliminaryPointsNode.geometry = createVisualization(for: renderedPreliminaryPoints, color: .appLightYellow, size: 12)
+
     }
     
     public func setPubManager(pubManager: PubManager) {
@@ -202,8 +188,6 @@ final class ViewController: UIViewController, ARSCNViewDelegate, CLLocationManag
                             // Automatically adjust the size of the bounding box.
                             
                             var simdPosition = self.pointCloudRenderer.centerPoint
-                            let localMin = self.pointCloudRenderer.localMin
-                            let localMax = self.pointCloudRenderer.localMax
                             var localWidth = (self.pointCloudRenderer.objectDetectionBuffer[0].w - self.pointCloudRenderer.objectDetectionBuffer[0].x) / 1920
                             var localHeight = (self.pointCloudRenderer.objectDetectionBuffer[0].h - self.pointCloudRenderer.objectDetectionBuffer[0].y) / 1440
                             
@@ -213,7 +197,7 @@ final class ViewController: UIViewController, ARSCNViewDelegate, CLLocationManag
                             self.boundingBox1?.eulerAngles = SCNVector3(0, arCamera.eulerAngles.y, 0);
                             
                             // publish
-                            self.obstacle_depth = self.pointCloudRenderer.localDepth
+                    
                             self.obstacle_width = localWidth
                             
                             self.boundingBox1?.simdPosition = simdPosition
@@ -226,12 +210,10 @@ final class ViewController: UIViewController, ARSCNViewDelegate, CLLocationManag
                             pubController.timestamp = self.sceneView.session.currentFrame!.timestamp
                             
                             self.boundingBox1?.extent = SIMD3(x: localWidth, y: localHeight, z: localWidth )
-                            
-                            
+            
                         }
                         
                         if let imageBuffer = self.sceneView.session.currentFrame?.capturedImage {
-                            //self.debugImageView.image = UIImage(ciImage: CIImage(cvPixelBuffer: imageBuffer))
                             self.debugImageView.image = UIImage(ciImage: CIImage(cvPixelBuffer: imageBuffer))
 
                         }
@@ -241,7 +223,6 @@ final class ViewController: UIViewController, ARSCNViewDelegate, CLLocationManag
             classificationRequest.imageCropAndScaleOption = VNImageCropAndScaleOption.centerCrop
             
             self.visionRequests = [classificationRequest]
-            //objectRecognition.imageCropAndScaleOption = VNImageCropAndScaleOption.centerCrop
             
         } catch let error as NSError {
             print("Model loading went wrong: \(error)")
@@ -261,7 +242,6 @@ final class ViewController: UIViewController, ARSCNViewDelegate, CLLocationManag
         
         let selectedVideoFormat = ARWorldTrackingConfiguration.supportedVideoFormats[1]
         configuration.videoFormat = selectedVideoFormat
-        //print(selectedVideoFormat) //imageResolution=(1920, 1080) framesPerSecond=(60) for iPhone 12 Pro
 
         // Run the view's session
         sceneView.session.run(configuration)
@@ -345,7 +325,6 @@ final class ViewController: UIViewController, ARSCNViewDelegate, CLLocationManag
             let topLabelObservation = objectObservation.labels[0]
             if (lastLabel != topLabelObservation.identifier) {
                 lastLabel = topLabelObservation.identifier;
-                //self.boundingBox = BoundingBox(sceneView);
             }
             
             let objectBounds = VNImageRectForNormalizedRect(objectObservation.boundingBox, Int(bufferSize.width), Int(bufferSize.height))
@@ -356,8 +335,7 @@ final class ViewController: UIViewController, ARSCNViewDelegate, CLLocationManag
             let textLayer = self.createTextSubLayerInBounds(objectBounds,
                                                             identifier: topLabelObservation.identifier,
                                                             confidence: topLabelObservation.confidence)
-            
-            self.debugTextView.text = String(format: "\(topLabelObservation.identifier) - Confidence:  %.2f\n\(self.pointCloudRenderer.localDepth)M", topLabelObservation.confidence)
+        
             shapeLayer.addSublayer(textLayer)
             
             //draw yolo bbox
@@ -365,8 +343,6 @@ final class ViewController: UIViewController, ARSCNViewDelegate, CLLocationManag
             break;
             
         }
-        
-        //self.updateLayerGeometry()
         CATransaction.commit()
         
     }
@@ -424,44 +400,17 @@ final class ViewController: UIViewController, ARSCNViewDelegate, CLLocationManag
         let bounds = rootLayer.bounds
         var scale: CGFloat
         
-        
         let xScale: CGFloat = bounds.size.width / bufferSize.height
         let yScale: CGFloat = bounds.size.height / bufferSize.width
-        //bounds.size.width : 1194.0
-        //bounds.size.height: 834.0
-        //bufferSize.width : 1194.0
-        //bufferSize.height : 834.0
-        //xScale : 1.4316546762589928
-        //yScale : 0.6984924623115578
-        
         scale = fmax(xScale, yScale)
-        // scale :, 1.4316546762589928
-        
+    
         if scale.isInfinite {
             scale = 1.0
         }
         CATransaction.begin()
         CATransaction.setValue(kCFBooleanTrue, forKey: kCATransactionDisableActions)
-        // rotate the layer into screen orientation and scale and mirror
-        //CGFloat(.pi / 2.0) : 1.57
-        //CGFloat(.pi / 3.0) : 1.04
-        
-       
         detectionOverlay.setAffineTransform(CGAffineTransform(rotationAngle: 0.0) .scaledBy(x: 1.0, y: -1.0))
-        // center the layer
-        // 여기?
         detectionOverlay.position = CGPoint(x: bounds.midX, y: bounds.midY)
-        //detectionOverlay.frame.
-        //pointCloudRenderer.objectDetectionBuffer[0] = BboxInfo(x: Float(detectionOverlay.frame.minX), y: Float(detectionOverlay.frame.minY), w: Float(detectionOverlay.frame.maxX), h: Float(detectionOverlay.frame.maxY))
-        
-        
-        //print("layout position : \(detectionOverlay.bounds.width) \(detectionOverlay.bounds.height) \(detectionOverlay.position.x) \(detectionOverlay.position.y) ")
-        
-        // detectionOverlay.bounds.width 1194
-        // detectionOverlay.bounds.height 834
-        // detectionOverlay.position.x 597
-        // detectionOverlay.position.y 417
-        
         CATransaction.commit()
         
         
@@ -479,13 +428,10 @@ final class ViewController: UIViewController, ARSCNViewDelegate, CLLocationManag
         textLayer.position = CGPoint(x: bounds.midX, y: bounds.midY)
         textLayer.shadowOpacity = 0.7
         textLayer.shadowOffset = CGSize(width: 2, height: 2)
-        //textLayer.backgroundColor = CGColor(colorSpace: CGColorSpaceCreateDeviceRGB(), components: [1.0, 0.0, 0.2, 0.4])
         textLayer.foregroundColor = CGColor(colorSpace: CGColorSpaceCreateDeviceRGB(), components: [1.0, 0.0, 0.0, 0.4])
-        //shapeLayer.backgroundColor = CGColor(colorSpace: CGColorSpaceCreateDeviceRGB(), components: [1.0, 1.0, 0.2, 0.4])
         textLayer.contentsScale = 2.0 // retina rendering
         // rotate the layer into screen orientation and scale and mirror
         textLayer.setAffineTransform(CGAffineTransform(rotationAngle: CGFloat(0.0)).scaledBy(x: 1.0, y: -1.0))
-        //textLayer.setAffineTransform(CGAffineTransform(rotationAngle: CGFloat(0.0)).scaledBy(x: 1.0, y: -1.0))
         return textLayer
     }
     
@@ -501,7 +447,6 @@ final class ViewController: UIViewController, ARSCNViewDelegate, CLLocationManag
     
     func loopCoreMLUpdate() {
             // Continuously run CoreML whenever it's ready. (Preventing 'hiccups' in Frame Rate)
-            
         dispatchQueueML.async {
             // 1. Run Update.
             self.updateCoreML()
@@ -513,27 +458,14 @@ final class ViewController: UIViewController, ARSCNViewDelegate, CLLocationManag
     }
     
     func updateCoreML() {
-        ///////////////////////////
         // Get Camera Image as RGB
         let pixbuff : CVPixelBuffer? = (self.sceneView.session.currentFrame?.capturedImage)
         if pixbuff == nil { return }
         let ciImage = CIImage(cvPixelBuffer: pixbuff!)
-        
-
-        // Note: Not entirely sure if the ciImage is being interpreted as RGB, but for now it works with the Inception model.
-        // Note2: Also uncertain if the pixelBuffer should be rotated before handing off to Vision (VNImageRequestHandler) - regardless, for now, it still works well with the Inception model.
-        
-        ///////////////////////////
-        // Prepare CoreML/Vision Request
-       // let imageRequestHandler = VNSequenceRequestHandler()
-      //  let imageRequestHandler = VNImageRequestHandler(ciImage: ciImage, orientation: .right, options: [:])
         let imageRequestHandler = VNImageRequestHandler(ciImage: ciImage, options: [:])
-        // let imageRequestHandler = VNImageRequestHandler(cgImage: cgImage!, orientation: myOrientation, options: [:]) // Alternatively; we can convert the above to an RGB CGImage and use that. Also UIInterfaceOrientation can inform orientation values.
-        
-        ///////////////////////////
+
         // Run Image Request
         do {
-         //   try imageRequestHandler.perform(self.visionRequests, on: ciImage)
             try imageRequestHandler.perform(self.visionRequests)
         } catch {
             print(error)
@@ -596,20 +528,6 @@ public func exifOrientationFromDeviceOrientation() -> UIInterfaceOrientation {
 }
 
 // MARK: - MTKViewDelegate
-
-//extension ViewController: MTKViewDelegate {
-//    
-//    // Called whenever view changes orientation or layout is changed
-//    func mtkView(_ view: MTKView, drawableSizeWillChange size: CGSize) {
-//        pointCloudRenderer.drawRectResized(size: size)
-//    }
-//    
-//    // Called whenever the view needs to render
-//    func draw(in view: MTKView) {
-//        pointCloudRenderer.draw()
-//    }
-//
-//}
 
 // MARK: - RenderDestinationProvider
 

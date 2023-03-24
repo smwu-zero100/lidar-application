@@ -1,11 +1,3 @@
-//
-//  PubManager.swift
-//  SceneDepthPointCloud
-//
-//  Created by Yejin on 2023/01/31.
-//  Copyright © 2023 Apple. All rights reserved.
-//
-
 import Foundation
 import ARKit
 import CoreLocation
@@ -28,7 +20,7 @@ final class PubManager {
     
     public init() {
         /// Create controlled pub objects for all publishers
-        // hello boin
+
         self.pubObstacle = ControlledPublisher(interface: self.interface, type: sensor_msgs__Obstacle.self)
         
         let controlledPubs: [PubController.PubType: [ControlledPublisher]] = [

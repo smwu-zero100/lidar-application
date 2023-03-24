@@ -1,11 +1,3 @@
-//
-//  PubController.swift
-//  SceneDepthPointCloud
-//
-//  Created by Yejin on 2023/01/31.
-//  Copyright © 2023 Apple. All rights reserved.
-//
-
 import Foundation
 import OSLog
 import ARKit

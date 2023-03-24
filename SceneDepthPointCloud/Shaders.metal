@@ -1,33 +1,18 @@
-/*
-See LICENSE folder for this sample’s licensing information.
-
-Abstract:
-The sample app's shaders.
-*/
-
 #include <metal_stdlib>
 #include <simd/simd.h>
 #import "ShaderTypes.h"
 
 using namespace metal;
 
-// Camera's RGB vertex shader outputs
 struct RGBVertexOut {
     float4 position [[position]];
     float2 texCoord;
 };
 
-// Particle vertex shader outputs and fragment shader inputs
 struct ParticleVertexOut {
-    float3 pre_position [[]];
     float4 position [[position]];
     float pointSize [[point_size]];
     float4 color;
-};
-
-struct Bbox3dVertexOut{
-  float4 position [[position]];  //1
-  float4 color;
 };
 
 constexpr sampler colorSampler(mip_filter::linear, mag_filter::linear, min_filter::linear);
@@ -38,26 +23,21 @@ constant auto yCbCrToRGB = float4x4(float4(+1.0000f, +1.0000f, +1.0000f, +0.0000
 constant float2 viewVertices[] = { float2(-1, 1), float2(-1, -1), float2(1, 1), float2(1, -1) };
 constant float2 viewTexCoords[] = { float2(0, 0), float2(0, 1), float2(1, 0), float2(1, 1) };
 
-/// Retrieves the world position of a specified camera point with depth
 static simd_float4 worldPoint(simd_float2 cameraPoint, float depth, matrix_float3x3 cameraIntrinsicsInversed, matrix_float4x4 localToWorld) {
     const auto localPoint = cameraIntrinsicsInversed * simd_float3(cameraPoint, 1) * depth;
     const auto worldPoint = localToWorld * simd_float4(localPoint, 1);
     
     return worldPoint / worldPoint.w;
-    //return localPoint;
 }
  
 static simd_float3 localPoint(simd_float2 cameraPoint, float depth, matrix_float3x3 cameraIntrinsicsInversed, matrix_float4x4 localToWorld) {
     auto localPoint = cameraIntrinsicsInversed * simd_float3(cameraPoint, 1) * depth;
-    const auto worldPoint = localToWorld * simd_float4(localPoint, 1);
-    
-    localPoint[0] = cameraPoint.x; //float(int(cameraPoint[0]).interpolated(from: 0...1920, to: 0...1192)); // 2 + 1920 /2;
-    localPoint[1] = cameraPoint.y; //float(int(cameraPoint[1]).interpolated(from: 0...1920, to: 0...1192)); // 2 + 1440 /2;
+    localPoint[0] = cameraPoint.x;
+    localPoint[1] = cameraPoint.y;
     
     return localPoint;
 }
 
-///  Vertex shader that takes in a 2D grid-point and infers its 3D position in world-space, along with RGB and confidence
 vertex void unprojectVertex(uint vertexID [[vertex_id]],
                             constant PointCloudUniforms &uniforms [[buffer(kPointCloudUniforms)]],
                             device ParticleUniforms *particleUniforms [[buffer(kParticleUniforms)]],
@@ -66,102 +46,42 @@ vertex void unprojectVertex(uint vertexID [[vertex_id]],
                             texture2d<float, access::sample> capturedImageTextureCbCr [[texture(kTextureCbCr)]],
                             texture2d<float, access::sample> depthTexture [[texture(kTextureDepth)]],
                             texture2d<unsigned int, access::sample> confidenceTexture [[texture(kTextureConfidence)]],
-                            constant BboxInfo *bboxinfo [[buffer(kBboxInfo)]],
-                            device ObstacleInfo *obstacleInfo [[buffer(kObstacleInfo)]],
-                            device BBoxMinMaxInfo *bboxMinMaxInfo [[buffer(kMinMaxInfo)]]) {
+                            constant BboxInfo *bboxinfo [[buffer(kBboxInfo)]]) {
     
     const auto gridPoint = gridPoints[vertexID];
     const auto currentPointIndex = (uniforms.pointCloudCurrentIndex + vertexID) % uniforms.maxPoints;
     const auto texCoord = gridPoint / uniforms.cameraResolution;
-    
-    // Sample the depth map to get the depth value
     const auto depth = depthTexture.sample(colorSampler, texCoord).r;
-    
-    // With a 2D point plus depth, we can now get its 3D position
-    const auto position = worldPoint(gridPoint, depth, uniforms.cameraIntrinsicsInversed, uniforms.localToWorld);
+    const auto worldPosition = worldPoint(gridPoint, depth, uniforms.cameraIntrinsicsInversed, uniforms.localToWorld);
     const auto loc_position = localPoint(gridPoint, depth, uniforms.cameraIntrinsicsInversed, uniforms.localToWorld);
-    
-    // Sample Y and CbCr textures to get the YCbCr color at the given texture coordinate
     const auto ycbcr = float4(capturedImageTextureY.sample(colorSampler, texCoord).r, capturedImageTextureCbCr.sample(colorSampler, texCoord.xy).rg, 1);
     const auto sampledColor = (yCbCrToRGB * ycbcr).rgb;
-    //const auto sampledColor =float3(0, 1, 0);
-    // Sample the confidence map to get the confidence value
     const auto confidence = confidenceTexture.sample(colorSampler, texCoord).r;
     
-    const auto a = 1.61; // 가로비
-    const auto b = 1.72; // 세로비
+    const auto horizontalRatioForViewToCamera = 1.61; // camera: 1920, renderer: 1440
+    const auto verticalRatioForViewToCamera = 1.72; // camera: 1194, renderer: 834
     
-    const auto x = bboxinfo[0].x * a; // min_x
-    const auto y = bboxinfo[0].y * b; // min_y
-    const auto w = bboxinfo[0].w * a; // max_x
-    const auto h = bboxinfo[0].h * b; // max_y
+    const auto bboxMinX_Renderer = bboxinfo[0].x * horizontalRatioForViewToCamera; // min_x
+    const auto bboxMinY_Renderer = bboxinfo[0].y * verticalRatioForViewToCamera; // min_y
+    const auto bboxMaxX_Renderer = bboxinfo[0].w * horizontalRatioForViewToCamera; // max_x
+    const auto bboxMaxY_Renderer = bboxinfo[0].h * verticalRatioForViewToCamera; // max_y
     
     // Write the data to the buffer
-    if((loc_position.x <= w) && (loc_position.y <= (1440-y)) && (loc_position.x <= 1920) && (loc_position.y <= 1440)) {
-        if((x <= loc_position.x) && ((1440-h) <= loc_position.y) && (x >= 0) && (y >= 0)) {
+    if((loc_position.x <= bboxMaxX_Renderer) && (loc_position.y <= (1440-bboxMinY_Renderer)) && (loc_position.x <= 1920) && (loc_position.y <= 1440)) {
+        if((bboxMinX_Renderer <= loc_position.x) && ((1440-bboxMaxY_Renderer) <= loc_position.y) && (bboxMinX_Renderer >= 0) && (bboxMinY_Renderer >= 0)) {
             particleUniforms[currentPointIndex].color = simd_float3(255, 0, 0);
-            //obstacleInfo[0].position = position.xyz;
-            
-            // update min mix position info
-            if(bboxMinMaxInfo[0].min_x > position.x){
-                bboxMinMaxInfo[0].min_x = position.x;
-            }else if(bboxMinMaxInfo[0].min_x < position.x){
-                bboxMinMaxInfo[0].max_x = position.x;
-            }
-            
-            if(bboxMinMaxInfo[0].min_y > position.y){
-                bboxMinMaxInfo[0].min_y = position.y;
-            }else if(bboxMinMaxInfo[0].min_y < position.y){
-                bboxMinMaxInfo[0].max_y = position.y;
-            }
-            
-            if(bboxMinMaxInfo[0].min_z > position.y){
-                bboxMinMaxInfo[0].min_z = position.y;
-            }else if(bboxMinMaxInfo[0].min_z < position.z){
-                bboxMinMaxInfo[0].max_z = position.z;
-            }
-            
-            if(depth < obstacleInfo[0].depth) {
-                obstacleInfo[0].position.x = position.x;
-                obstacleInfo[0].position.y = position.y; ///(obstacleInfo[0].position.y + position.y);
-                obstacleInfo[0].position.z = position.z; ///(obstacleInfo[0].position.z + position.z);
-                //obstacleInfo[0].count = obstacleInfo[0].count + 1;
-                obstacleInfo[0].depth = depth;
-            }
-            
-            
         }else{
             particleUniforms[currentPointIndex].color = sampledColor;
         }
     }else{
         particleUniforms[currentPointIndex].color = sampledColor;
     }
-    particleUniforms[currentPointIndex].x = x;
-    particleUniforms[currentPointIndex].y = y;
-    particleUniforms[currentPointIndex].w = w;
-    particleUniforms[currentPointIndex].h = h;
-    particleUniforms[currentPointIndex].position = position.xyz;
+    particleUniforms[currentPointIndex].x = bboxMinX_Renderer;
+    particleUniforms[currentPointIndex].y = bboxMinY_Renderer;
+    particleUniforms[currentPointIndex].w = bboxMaxX_Renderer;
+    particleUniforms[currentPointIndex].h = bboxMaxY_Renderer;
+    particleUniforms[currentPointIndex].position = worldPosition.xyz;
     particleUniforms[currentPointIndex].depth = depth;
-    
-    
-    if (currentPointIndex == 0) {
-        particleUniforms[0].position.x = obstacleInfo[0].position.x;
-        particleUniforms[0].position.y = obstacleInfo[0].position.y;
-        particleUniforms[0].position.z = obstacleInfo[0].position.z;
-        particleUniforms[0].color = simd_float3(255, 255, 0);
-    }
-    
-    if (currentPointIndex == 1) {
-        particleUniforms[1].position.x = obstacleInfo[0].position.x;
-        particleUniforms[1].position.y = obstacleInfo[0].position.y;
-        particleUniforms[1].position.z = obstacleInfo[0].position.z;
-        particleUniforms[0].color = simd_float3(0, 255, 255);
-    }
-    
-    particleUniforms[currentPointIndex].x = loc_position.x;
-    particleUniforms[currentPointIndex].y = loc_position.y;
-    
-   // particleUniforms[currentPointIndex].color = sampledColor;
     particleUniforms[currentPointIndex].confidence = confidence;
 }
 
@@ -185,48 +105,22 @@ fragment float4 rgbFragment(RGBVertexOut in [[stage_in]],
     const float visibility = saturate(uniforms.radius * uniforms.radius - length_squared(offset));
     const float4 ycbcr = float4(capturedImageTextureY.sample(colorSampler, in.texCoord.xy).r, capturedImageTextureCbCr.sample(colorSampler, in.texCoord.xy).rg, 1);
     
-    // convert and save the color back to the buffer
     const float3 sampledColor = (yCbCrToRGB * ycbcr).rgb;
     return float4(sampledColor, 1) * visibility;
-}
-//0220
-vertex float4 bboxVertex(const device packed_float2* vertices [[ buffer(0) ]],
-                       unsigned int vertexId [[ vertex_id ]])
-{
-
-    return float4(vertices[vertexId], 0.0, 1.0);
-    
-}
-
-fragment half4 bboxFragment() {
-  return half4(0, 1, 0, 1);
 }
 vertex ParticleVertexOut particleVertex(uint vertexID [[vertex_id]],
                                         constant PointCloudUniforms &uniforms [[buffer(kPointCloudUniforms)]],
                                         device ParticleUniforms *particleUniforms [[buffer(kParticleUniforms)]]) {
     
-    const auto currentPointIndex = (uniforms.pointCloudCurrentIndex + vertexID) % uniforms.maxPoints;
-    // get point data
     const auto particleData = particleUniforms[vertexID];
     const auto position = particleData.position;
     const auto confidence = particleData.confidence;
     const auto sampledColor = particleData.color;
     const auto visibility = confidence >= uniforms.confidenceThreshold;
-
-    // animate and project the point
     float4 projectedPosition = uniforms.viewProjectionMatrix * float4(position, 1.0);
     const float pointSize = max(uniforms.particleSize / max(1.0, projectedPosition.z), 2.0);
-    projectedPosition /= projectedPosition.w;
-    
-    //write
-    particleUniforms[currentPointIndex].particlebuffer_position = projectedPosition;
-    //particleUniforms[currentPointIndex].position = projectedPosition.xyz;
-    //particleUniforms[currentPointIndex].color = sampledColor;
-    //particleUniforms[currentPointIndex].confidence = confidence;
-    
-    // prepare for output
+       
     ParticleVertexOut out;
-    out.pre_position = position;
     out.position = projectedPosition;
     out.pointSize = pointSize;
     out.color = float4(sampledColor, visibility);
@@ -236,7 +130,7 @@ vertex ParticleVertexOut particleVertex(uint vertexID [[vertex_id]],
 
 fragment float4 particleFragment(ParticleVertexOut in [[stage_in]],
                                  const float2 coords [[point_coord]]) {
-    // we draw within a circle
+
     const float distSquared = length_squared(coords - float2(0.5));
     if (in.color.a == 0 || distSquared > 0.25) {
         discard_fragment();

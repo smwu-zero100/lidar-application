@@ -1,10 +1,3 @@
-/*
-See LICENSE folder for this sample’s licensing information.
-
-Abstract:
-Type-safe utility for working with MTLBuffers.
-*/
-
 import MetalKit
 
 protocol Resource {

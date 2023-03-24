@@ -1,10 +1,3 @@
-/*
-See LICENSE folder for this sample’s licensing information.
-
-Abstract:
-Visualizaitons and controls for resizing a bounding box.
-*/
-
 import Foundation
 import SceneKit
 

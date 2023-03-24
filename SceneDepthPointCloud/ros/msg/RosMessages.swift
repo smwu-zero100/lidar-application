@@ -1,11 +1,3 @@
-//
-//  RosMessages.swift
-//  SceneDepthPointCloud
-//
-//  Created by Yejin on 2023/01/31.
-//  Copyright © 2023 Apple. All rights reserved.
-//
-
 import Foundation
 
 /// Generic ROS message, which is just an encodable object.

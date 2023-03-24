@@ -169,9 +169,8 @@ final class RosMessagesUtils {
         return sensor_msgs__NavSatFix(header: header, status: status, latitude: latitude, longitude: longitude, altitude: altitude)
     }
     
-    public static func obstacleInfoToMsgs(time : Double, width:Float, depth:Float) -> sensor_msgs__Obstacle{
+    public static func obstacleInfoToMsgs(time:Double, width:Float, depth:Float) -> sensor_msgs__Obstacle{
         let header = std_msgs__Header(stamp: self.getTimestamp(time), frame_id: "obstacle")
-        
         return sensor_msgs__Obstacle(header: header, width: width, depth: depth)
     }
  }

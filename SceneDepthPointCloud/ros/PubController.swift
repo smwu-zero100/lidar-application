@@ -22,6 +22,9 @@ final class PubController {
         case obstacle
     }
     public static let defaultRate = 10.0
+    public var width:Float = 0.0
+    public var depth:Float = 0.0
+    public var timestamp:TimeInterval = 0.0
     
     private let logger = Logger(subsystem: "com.cherrrity.zero-lidar-logger", category: "PubController")
     

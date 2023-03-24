@@ -120,6 +120,19 @@ final class Renderer {
     var filteredPoints: [SIMD3<Float>] = [];
     var filteredPoints_2: [SIMD3<Float>] = [];
     
+    var _min : Float = 100.0
+    var _max : Float = -100.0
+    
+    var locminx : Float = 1000.0
+    var locmaxx : Float = -100.0
+    var locminy : Float = 1000.0
+    var locmaxy : Float = -100.0
+    
+    var posminx : Float = 1000.0
+    var posmaxx : Float = -100.0
+    var posminy : Float = 1000.0
+    var posmaxy : Float = -100.0
+    
     // interfaces
     var confidenceThreshold = 1 {
         didSet {
@@ -360,63 +373,58 @@ final class Renderer {
         filteredPoints = [];
         
         
-        for i in 1...particlesBuffer.count-1 {
-            let point_temp = particlesBuffer[i];
+        for i in 0..<currentPointCount {
+            let point = particlesBuffer[i]
             
-            if(point_temp.color == simd_float3(x: 255, y: 0, z: 0)) {
-                // print(point_temp.position.x, point_temp.position.y, point_temp.position.z)
-                // print(point_temp.depth)
-                if (point_temp.depth < 2) {
+            if(point.color == simd_float3(255, 0, 0)){
+                
+                if(point.color == simd_float3(255, 0, 0)){
                     count = count + 1
-                    localDepthMid += point_temp.depth
+                    centerPoint = centerPoint + simd_float3(point.position.x,point.position.y, point.position.z)
                     
-                    centerPoint = centerPoint + point_temp.position
-                    filteredPoints.append(SIMD3(x: point_temp.position.x, y: point_temp.position.y, z: point_temp.position.z))
-                    
-                    if (point_temp.depth < localDepth){
-                        localDepth = point_temp.depth
+                    if(point.depth < _min){
+                        _min = point.depth
+                    }
+                    if(point.depth > _max){
+                        _max = point.depth
                     }
                     
-                    localMin = min(localMin, SIMD3(x: point_temp.position.x, y: point_temp.position.y, z: point_temp.position.z))
-                    localMax = max(localMax, SIMD3(x: point_temp.position.x, y: point_temp.position.y, z: point_temp.position.z))
+                    if(point.x < locminx){
+                        locminx = point.x
+                    }
+                    if(point.x > locmaxx){
+                        locmaxx = point.x
+                        
+                    }
+                    if(point.y < locminy){
+                        locminy = point.y
+                    }
+                    if(point.y > locmaxy){
+                        locmaxy = point.y
+                    }
+                    
+                    if(point.position.x < posminx){
+                        posminx = point.position.x
+                    }
+                    if(point.position.x > posmaxx){
+                        posmaxx = point.position.x
+                        
+                    }
+                    if(point.position.y < posminy){
+                        posminy = point.position.y
+                    }
+                    if(point.position.y > posmaxy){
+                        posmaxy = point.position.y
+                    }
                 }
+                
             }
         }
         
-        centerPoint.x = centerPoint.x / Float(count);
-        centerPoint.y = centerPoint.y / Float(count);
-        centerPoint.z = (centerPoint.z / Float(count));
+        centerPoint = centerPoint/Float(count);
         
         localDepthMid = localDepthMid / Float(count);
-//        count = 0;
-//        
-//        
-//        for point_temp in filteredPoints {
-//            var nearbyPoints = 0;
-//            for other_point in filteredPoints {
-//                if distance(other_point, point_temp) < maxOutliarDistance {
-//                    nearbyPoints += 1;
-//                    if nearbyPoints >= 3 {
-//                        filteredPoints_2.append(point_temp)
-//                        break
-//                    }
-//                }
-//            }
-//        }
-//        
-//        for point_temp in filteredPoints_2 {
-//            // The bounding box is in local coordinates, so convert point to local, too.
-//            
-//            count = count + 1
-//            realCenterPoint = realCenterPoint + point_temp
-//            
-//            localMin = min(localMin, point_temp)
-//            localMax = max(localMax, point_temp)
-//        }
-//        
-//        realCenterPoint.x = realCenterPoint.x / Float(count);
-//        realCenterPoint.y = realCenterPoint.y / Float(count);
-//        realCenterPoint.z = realCenterPoint.z / Float(count);
+        
     }
     
     private func shouldAccumulate(frame: ARFrame) -> Bool {

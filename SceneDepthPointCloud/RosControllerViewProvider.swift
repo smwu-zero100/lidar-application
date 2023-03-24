@@ -93,7 +93,6 @@ final class RosControllerViewProvider {
     }
     
     private func initViews(uiLabel: UILabel, labelText: String, uiTextField: UITextField?, uiStatusSwitch: UISwitch, textFieldPlaceholder: String?, useAsDefaultText: Bool = false, pubEntry: PubEntry? = nil) {
-        print("test")
         if nil != uiTextField {
             uiTextField!.borderStyle = UITextField.BorderStyle.bezel
             uiTextField!.clearButtonMode = UITextField.ViewMode.whileEditing
@@ -146,6 +145,7 @@ final class RosControllerViewProvider {
     
     @objc
     private func switchStatusChanged(view: UIView) {
+        print("switch change")
         switch view {
         case self.masterSwitch:
             self.updateMasterSwitch()
@@ -179,11 +179,14 @@ final class RosControllerViewProvider {
     }
     
     private func updateMasterSwitch() {
+        print("master switch")
         if self.masterSwitch.isOn {
+            print("is on")
             self.updateUrl()
         } else {
+            print("is off")
             // Disable pub controller
-            self.pubController.disable()
+            //self.pubController.disable()
         }
     }
     

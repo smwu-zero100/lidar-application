@@ -51,17 +51,12 @@ final class ViewController: UIViewController, ARSCNViewDelegate, CLLocationManag
     var latestPrediction : String = "…"
     var lastLabel: String = ""
     
-    public func setPubManager(pubManager: PubManager) {
-        self.pubController = pubManager.pubController
-        self.session_ros = pubManager.session
-        self.locationManager = pubManager.locationManager
-    }
-    
     var obstacle_depth:Float = 0.0
     var obstacle_width:Float = 0.0
     
     //var model_name = "ObjectDetector"
-    var model_name = "yolov5_FP16"
+    var model_name = "YOLOv3TinyInt8LUT"
+    //var model_name = "yolov5_FP16"
     //YOLOv3TinyInt8LUT
     var rootLayer: CALayer! = nil
     var detectionOverlay: CALayer! = nil
@@ -182,6 +177,12 @@ final class ViewController: UIViewController, ARSCNViewDelegate, CLLocationManag
         //self.preliminaryPointsNode.geometry = createVisualization(for: renderedPreliminaryPoints, color: .appLightYellow, size: 12)
     }
     
+    public func setPubManager(pubManager: PubManager) {
+        self.pubController = pubManager.pubController
+        self.session_ros = pubManager.session
+        self.locationManager = pubManager.locationManager
+    }
+    
     @discardableResult
     func setupVision() -> NSError? {
         // Setup Vision parts
@@ -203,8 +204,9 @@ final class ViewController: UIViewController, ARSCNViewDelegate, CLLocationManag
                             var simdPosition = self.pointCloudRenderer.centerPoint
                             let localMin = self.pointCloudRenderer.localMin
                             let localMax = self.pointCloudRenderer.localMax
-                            let localWidth = (self.pointCloudRenderer.objectDetectionBuffer[0].w - self.pointCloudRenderer.objectDetectionBuffer[0].x) / 1920
-                            let localHeight = (self.pointCloudRenderer.objectDetectionBuffer[0].h - self.pointCloudRenderer.objectDetectionBuffer[0].y) / 1440
+                            var localWidth = (self.pointCloudRenderer.objectDetectionBuffer[0].w - self.pointCloudRenderer.objectDetectionBuffer[0].x) / 1920
+                            var localHeight = (self.pointCloudRenderer.objectDetectionBuffer[0].h - self.pointCloudRenderer.objectDetectionBuffer[0].y) / 1440
+                            
 
                             guard let arCamera = self.sceneView.session.currentFrame?.camera else { return }
                             
@@ -215,9 +217,17 @@ final class ViewController: UIViewController, ARSCNViewDelegate, CLLocationManag
                             self.obstacle_width = localWidth
                             
                             self.boundingBox1?.simdPosition = simdPosition
-                            //self.boundingBox1?.simdPosition = self.pointCloudRenderer.localDepthMid
-                            self.boundingBox1?.extent = SIMD3(x: localWidth, y: localHeight, z:localWidth)
-                            //self.boundingBox1?.fitOverPointCloud(points.points, focusPoint: simdPosition)
+                            
+                            localWidth = localWidth //* (self.pointCloudRenderer._min/0.42)
+                            localHeight = localHeight //* (self.pointCloudRenderer._min/0.42)
+                            
+                            pubController.depth = self.pointCloudRenderer._min
+                            pubController.width = localWidth
+                            pubController.timestamp = self.sceneView.session.currentFrame!.timestamp
+                            
+                            self.boundingBox1?.extent = SIMD3(x: localWidth, y: localHeight, z: localWidth )
+                            
+                            
                         }
                         
                         if let imageBuffer = self.sceneView.session.currentFrame?.capturedImage {

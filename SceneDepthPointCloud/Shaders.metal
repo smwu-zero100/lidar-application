@@ -158,6 +158,8 @@ vertex void unprojectVertex(uint vertexID [[vertex_id]],
         particleUniforms[0].color = simd_float3(0, 255, 255);
     }
     
+    particleUniforms[currentPointIndex].x = loc_position.x;
+    particleUniforms[currentPointIndex].y = loc_position.y;
     
    // particleUniforms[currentPointIndex].color = sampledColor;
     particleUniforms[currentPointIndex].confidence = confidence;

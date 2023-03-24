@@ -21,7 +21,7 @@ final class PubController {
         case location
         case obstacle
     }
-    public static let defaultRate = 10.0
+    public static let defaultRate = 2.0
     public var width:Float = 0.0
     public var depth:Float = 0.0
     public var timestamp:TimeInterval = 0.0

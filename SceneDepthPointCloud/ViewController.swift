@@ -218,8 +218,8 @@ final class ViewController: UIViewController, ARSCNViewDelegate, CLLocationManag
                             
                             self.boundingBox1?.simdPosition = simdPosition
                             
-                            localWidth = localWidth //* (self.pointCloudRenderer._min/0.42)
-                            localHeight = localHeight //* (self.pointCloudRenderer._min/0.42)
+                            localWidth = localWidth * (self.pointCloudRenderer._min/0.42)
+                            localHeight = localHeight * (self.pointCloudRenderer._min/0.42)
                             
                             pubController.depth = self.pointCloudRenderer._min
                             pubController.width = localWidth

@@ -372,6 +372,19 @@ final class Renderer {
         realCenterPoint = SIMD3(0, 0, 0);
         filteredPoints = [];
         
+        _min = 100.0
+        _max = -100.0
+//
+//        var locminx : Float = 1000.0
+//        var locmaxx : Float = -100.0
+//        var locminy : Float = 1000.0
+//        var locmaxy : Float = -100.0
+//
+//        var posminx : Float = 1000.0
+//        var posmaxx : Float = -100.0
+//        var posminy : Float = 1000.0
+//        var posmaxy : Float = -100.0
+        
         
         for i in 0..<currentPointCount {
             let point = particlesBuffer[i]

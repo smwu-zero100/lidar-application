@@ -39,6 +39,7 @@ final class RosControllerViewProvider {
     private var pointCloudEntry: PubEntry! = nil
     private var cameraEntry: PubEntry! = nil
     private var locationEntry : PubEntry! = nil
+    private var obstacleEntry : PubEntry! = nil
     
     private let session: ARSession
     private let pubController: PubController
@@ -53,18 +54,10 @@ final class RosControllerViewProvider {
         self.session = session
         
         // Pub UI entries
-        self.transformsEntry = self.createPubEntry(pubType: .transforms, labelText: "Transforms")
-        self.depthEntry = self.createPubEntry(pubType: .depth, labelText: "Depth map", defaultTopicName: "/ipad/depth")
-        self.pointCloudEntry = self.createPubEntry(pubType: .pointCloud, labelText: "Point cloud", defaultTopicName: "/ipad/pointcloud")
-        self.cameraEntry = self.createPubEntry(pubType: .camera, labelText: "Camera", defaultTopicName: "/ipad/camera")
-        self.locationEntry = self.createPubEntry(pubType: .location, labelText: "Location", defaultTopicName: "/ipad/location")
+        self.obstacleEntry = self.createPubEntry(pubType: .obstacle, labelText: "Obstacle", defaultTopicName: "ipad/obstacle")
         
         self.pubEntries = [
-            .transforms: self.transformsEntry,
-            .depth: self.depthEntry,
-            .pointCloud: self.pointCloudEntry,
-            .camera: self.cameraEntry,
-            .location: self.locationEntry
+            .obstacle: self.obstacleEntry
         ]
         
         self.pubEntries.forEach { (_: PubController.PubType, pubEntry: PubEntry) in
@@ -76,11 +69,12 @@ final class RosControllerViewProvider {
         
         // Stack with all the ROS config
         // TODO add separator between IP address and pub controls
-        let labelsStackView = self.createVerticalStack(arrangedSubviews: [urlTextFieldLabel, self.transformsEntry.label, self.depthEntry.label, self.pointCloudEntry.label, self.cameraEntry.label, self.locationEntry.label])
-        let textFieldsStackView = self.createVerticalStack(arrangedSubviews: [urlTextField, UIView(), self.depthEntry.topicNameField!, self.pointCloudEntry.topicNameField!, self.cameraEntry.topicNameField!, self.locationEntry.topicNameField!])
-        let statusSwitchesView = self.createVerticalStack(arrangedSubviews: [masterSwitch, self.transformsEntry.stateSwitch, self.depthEntry.stateSwitch, self.pointCloudEntry.stateSwitch, self.cameraEntry.stateSwitch, self.locationEntry.stateSwitch])
-        let steppersView = self.createVerticalStack(arrangedSubviews: [UIView(), self.transformsEntry.rateStepper, self.depthEntry.rateStepper, self.pointCloudEntry.rateStepper, self.cameraEntry.rateStepper, self.locationEntry.rateStepper])
-        let stepperDisplaysView = self.createVerticalStack(arrangedSubviews: [UIView(), self.transformsEntry.rateStepperLabel, self.depthEntry.rateStepperLabel, self.pointCloudEntry.rateStepperLabel, self.cameraEntry.rateStepperLabel, self.locationEntry.rateStepperLabel])
+        let labelsStackView = self.createVerticalStack(arrangedSubviews: [urlTextFieldLabel, self.obstacleEntry.label])
+        let textFieldsStackView = self.createVerticalStack(arrangedSubviews: [urlTextField, UIView(), self.obstacleEntry.topicNameField!])
+        let statusSwitchesView = self.createVerticalStack(arrangedSubviews: [masterSwitch, self.obstacleEntry.stateSwitch])
+        let steppersView = self.createVerticalStack(arrangedSubviews: [UIView(), self.obstacleEntry.rateStepper])
+        let stepperDisplaysView = self.createVerticalStack(arrangedSubviews: [UIView(), self.obstacleEntry.rateStepperLabel])
+        
         let rosStackView = UIStackView(arrangedSubviews: [labelsStackView, textFieldsStackView, statusSwitchesView, steppersView, stepperDisplaysView])
         rosStackView.translatesAutoresizingMaskIntoConstraints = false
         rosStackView.axis = .horizontal
@@ -99,6 +93,7 @@ final class RosControllerViewProvider {
     }
     
     private func initViews(uiLabel: UILabel, labelText: String, uiTextField: UITextField?, uiStatusSwitch: UISwitch, textFieldPlaceholder: String?, useAsDefaultText: Bool = false, pubEntry: PubEntry? = nil) {
+        print("test")
         if nil != uiTextField {
             uiTextField!.borderStyle = UITextField.BorderStyle.bezel
             uiTextField!.clearButtonMode = UITextField.ViewMode.whileEditing
@@ -142,14 +137,8 @@ final class RosControllerViewProvider {
         switch view {
         case self.urlTextField:
             self.updateUrl()
-        case self.depthEntry.topicNameField:
-            self.updatePubTopic(.depth)
-        case self.pointCloudEntry.topicNameField:
-            self.updatePubTopic(.pointCloud)
-        case self.cameraEntry.topicNameField:
-            self.updatePubTopic(.camera)
-        case self.locationEntry.topicNameField:
-            self.updatePubTopic(.location)
+        case self.obstacleEntry.topicNameField:
+            self.updatePubTopic(.obstacle)
         default:
             break
         }
@@ -160,16 +149,8 @@ final class RosControllerViewProvider {
         switch view {
         case self.masterSwitch:
             self.updateMasterSwitch()
-        case self.transformsEntry.stateSwitch:
-            self.updateTopicState(.transforms)
-        case self.depthEntry.stateSwitch:
-            self.updateTopicState(.depth)
-        case self.pointCloudEntry.stateSwitch:
-            self.updateTopicState(.pointCloud)
-        case self.cameraEntry.stateSwitch:
-            self.updateTopicState(.camera)
-        case self.locationEntry.stateSwitch:
-            self.updateTopicState(.location)
+        case self.obstacleEntry.stateSwitch:
+            self.updateTopicState(.obstacle)
         default:
             break
         }
@@ -178,16 +159,8 @@ final class RosControllerViewProvider {
      @objc
      private func stepperValueChanged(view: UIView) {
         switch view {
-        case self.transformsEntry.rateStepper:
-            self.updateRate(.transforms)
-        case self.depthEntry.rateStepper:
-            self.updateRate(.depth)
-        case self.pointCloudEntry.rateStepper:
-            self.updateRate(.pointCloud)
-        case self.cameraEntry.rateStepper:
-            self.updateRate(.camera)
-        case self.locationEntry.rateStepper:
-            self.updateRate(.location)
+        case self.obstacleEntry.rateStepper:
+            self.updateRate(.obstacle)
         default:
             break
         }

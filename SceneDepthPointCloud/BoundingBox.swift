@@ -35,7 +35,7 @@ class BoundingBox: SCNNode {
     }
     
     var hasBeenAdjustedByUser = false
-    private var maxDistanceToFocusPoint: Float = 0.05
+    private var maxDistanceToFocusPoint: Float = 0.1
     private var maxOutliarDistance: Float = 0.03
     
     private var minSize: Float = 0.01
@@ -45,7 +45,7 @@ class BoundingBox: SCNNode {
     private var sidesNode = SCNNode()
     private var sides: [BoundingBoxSide.Position: BoundingBoxSide] = [:]
     
-    private var color = UIColor(displayP3Red:159/255, green: 203/255, blue: 109/255, alpha: 1)
+    private var color = UIColor(red:159/255, green: 203/255, blue: 109/255, alpha: 1)
     
     private var cameraRaysAndHitLocations: [(ray: Ray, hitLocation: SIMD3<Float>)] = []
     private var frameCounter: Int = 0
@@ -64,10 +64,10 @@ class BoundingBox: SCNNode {
         updateVisualization()
     }
     
-    func fitOverPointCloud(_ pointCloud: ARPointCloud, focusPoint: SIMD3<Float>?) {
+    func fitOverPointCloud(_ pointCloud: [SIMD3<Float>], focusPoint: SIMD3<Float>?) {
         var filteredPoints: [SIMD3<Float>] = []
         
-        for point in pointCloud.points {
+        for point in pointCloud {
             if let focus = focusPoint {
                 // Skip this point if it is more than maxDistanceToFocusPoint meters away from the focus point.
                 let distanceToFocusPoint = length(point - focus)
@@ -79,7 +79,7 @@ class BoundingBox: SCNNode {
             
             // Skip this point if it is an outlier (not at least 3 other points closer than 3 cm)
             var nearbyPoints = 0
-            for otherPoint in pointCloud.points {
+            for otherPoint in pointCloud {
                 if distance(point, otherPoint) < maxOutliarDistance {
                     nearbyPoints += 1
                     if nearbyPoints >= 3 {
@@ -98,6 +98,7 @@ class BoundingBox: SCNNode {
         print("TEST : \(filteredPoints.count)")
         
         for point in filteredPoints {
+            //print(point)
             // The bounding box is in local coordinates, so convert point to local, too.
             let localPoint = self.simdConvertPosition(point, from: nil)
             
@@ -105,6 +106,9 @@ class BoundingBox: SCNNode {
             localMax = max(localMax, localPoint)
         }
         
+        print(localMin)
+        print(localMax)
+        print("**************")
         // Update the position & extent of the bounding box based on the new min & max values.
         self.simdPosition += (localMax + localMin) / 2
         self.extent = localMax - localMin

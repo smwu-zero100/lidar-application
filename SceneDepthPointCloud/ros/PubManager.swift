@@ -27,6 +27,7 @@ final class PubManager {
     private var pubPointCloud: ControlledPublisher
     private var pubCamera: ControlledPublisher
     private var pubLocation : ControlledPublisher
+    private var pubObstacle : ControlledPublisher
     
     var centroids = [vector_float3]()
     
@@ -41,6 +42,7 @@ final class PubManager {
         self.pubPointCloud = ControlledPublisher(interface: self.interface, type: sensor_msgs__PointCloud2.self)
         self.pubCamera = ControlledPublisher(interface: self.interface, type: sensor_msgs__Image.self)
         self.pubLocation = ControlledPublisher(interface: self.interface, type: sensor_msgs__NavSatFix.self)
+        self.pubObstacle = ControlledPublisher(interface: self.interface, type: sensor_msgs__Obstacle.self)
         
         let controlledPubs: [PubController.PubType: [ControlledPublisher]] = [
             //.transforms: [self.pubTf, self.pubTfStatic],
@@ -48,7 +50,8 @@ final class PubManager {
             .depth: [self.pubDepth],
             .pointCloud: [self.pubPointCloud],
             .camera: [self.pubCamera],
-            .location : [self.pubLocation]
+            .location : [self.pubLocation],
+            .obstacle : [self.pubObstacle]
         ]
         self.pubController = PubController(pubs: controlledPubs, interface: self.interface)
         publishPointCloud()  /////
@@ -86,6 +89,7 @@ final class PubManager {
         // self.startPubThread(id: "camera", pubType: .camera, publishFunc: self.publishCamera)
         
         self.startPubThread(id: "location", pubType: .location, publishFunc: self.publishLocation)
+        self.startPubThread(id: "obstacle", pubType: .obstacle, publishFunc: self.publishObstacle)
     }
     
     private func publishTf() {
@@ -120,12 +124,6 @@ final class PubManager {
         }
         // clustering code 예정
         
-        // centroids = initAndClustering(points: pointCloud)
-
-        // centroids.forEach { (point) in
-        //     pointCloud.append(point)
-        // }
-        
         let timestamp = currentFrame.timestamp
         self.pubPointCloud.publish(RosMessagesUtils.pointsToPointCloud2(time: timestamp, points: pointCloud))
     }
@@ -142,15 +140,21 @@ final class PubManager {
         let timestamp = currentFrame.timestamp
         self.pubLocation.publish(RosMessagesUtils.locationToNavsatFix(time: timestamp, location: locations))
     }
+    
+    
+    private func publishObstacle(){
+        
+        var width = ViewController().obstacle_width
+        var depth = ViewController().obstacle_depth
+        guard let currentLocation = self.locationManager.location,
+              let currentHeading = self.locationManager.heading,
+              let currentFrame = self.session.currentFrame else{
+            return
+        }
+        
+        print("publish \(width) \(depth)")
+
+        let timestamp = currentFrame.timestamp
+        self.pubObstacle.publish(RosMessagesUtils.obstacleInfoToMsgs(time: timestamp, width: width, depth: depth))
+    }
 }
-
-   
-//    private func publishCamera() {
-//        guard let currentFrame = self.session.currentFrame else {
-//            return
-//        }
-//        let timestamp = currentFrame.timestamp
-//        let cameraImage = currentFrame.capturedImage
-//        self.pubCamera.publish(RosMessagesUtils.pixelBufferToImage(time: time, pixelBuffer: cameraImage))
-//    }
-

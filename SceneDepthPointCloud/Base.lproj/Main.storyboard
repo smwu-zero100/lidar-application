@@ -17,11 +17,11 @@
                         <rect key="frame" x="0.0" y="0.0" width="1194" height="834"/>
                         <autoresizingMask key="autoresizingMask" widthSizable="YES" heightSizable="YES"/>
                         <subviews>
-                            <arscnView clipsSubviews="YES" userInteractionEnabled="NO" contentMode="scaleToFill" fixedFrame="YES" sceneName="sceneView" translatesAutoresizingMaskIntoConstraints="NO" id="xXc-R6-MRk">
+                            <arscnView clipsSubviews="YES" multipleTouchEnabled="YES" contentMode="scaleToFill" fixedFrame="YES" sceneName="sceneView" translatesAutoresizingMaskIntoConstraints="NO" id="xXc-R6-MRk">
                                 <rect key="frame" x="-5" y="-5" width="1196" height="835"/>
                                 <autoresizingMask key="autoresizingMask" widthSizable="YES" heightSizable="YES"/>
                             </arscnView>
-                            <textView clipsSubviews="YES" multipleTouchEnabled="YES" contentMode="scaleToFill" fixedFrame="YES" text="debug text" textAlignment="natural" translatesAutoresizingMaskIntoConstraints="NO" id="j4D-4b-vtB">
+                            <textView clipsSubviews="YES" multipleTouchEnabled="YES" contentMode="scaleToFill" fixedFrame="YES" bounces="NO" scrollEnabled="NO" showsHorizontalScrollIndicator="NO" showsVerticalScrollIndicator="NO" delaysContentTouches="NO" canCancelContentTouches="NO" bouncesZoom="NO" editable="NO" text="debug text" textAlignment="natural" selectable="NO" translatesAutoresizingMaskIntoConstraints="NO" id="j4D-4b-vtB">
                                 <rect key="frame" x="934" y="24" width="240" height="128"/>
                                 <autoresizingMask key="autoresizingMask" flexibleMaxX="YES" flexibleMaxY="YES"/>
                                 <color key="backgroundColor" systemColor="systemBackgroundColor"/>

@@ -34,7 +34,7 @@ final class ViewController: UIViewController, ARSCNViewDelegate, CLLocationManag
     private let controlsButton = UIButton()
     private var isControlsViewEnabled = true
     
-    //private var session = ARSession()
+    private var session_ros = ARSession()
     
     private var locationManager = CLLocationManager()
     private var renderer: Renderer!
@@ -53,19 +53,23 @@ final class ViewController: UIViewController, ARSCNViewDelegate, CLLocationManag
     
     public func setPubManager(pubManager: PubManager) {
         self.pubController = pubManager.pubController
-        //self.session = pubManager.session
+        self.session_ros = pubManager.session
         self.locationManager = pubManager.locationManager
     }
     
-    var model_name = "YOLOv3TinyInt8LUT"
-    //var model_name = "yolov5_FP16"
+    var obstacle_depth:Float = 0.0
+    var obstacle_width:Float = 0.0
+    
+    //var model_name = "ObjectDetector"
+    var model_name = "yolov5_FP16"
     //YOLOv3TinyInt8LUT
     var rootLayer: CALayer! = nil
     var detectionOverlay: CALayer! = nil
     // Vision parts
     private var requests = [VNRequest]()
     
-    private var boundingBox: BoundingBox?
+    private var boundingBox1: BoundingBox?
+    private var boundingBox2: BoundingBox?
     private var referenceObjectPoints: [SIMD3<Float>] = []
     private var currentFramePoints: [SIMD3<Float>] = []
     private var renderedPoints: [SIMD3<Float>] = []
@@ -76,11 +80,6 @@ final class ViewController: UIViewController, ARSCNViewDelegate, CLLocationManag
     
     override func viewDidLoad() {
         super.viewDidLoad()
-        
-        guard let device = MTLCreateSystemDefaultDevice() else {
-            print("Metal is not supported on this device")
-            return
-        }
         
         //session.delegate = self
         locationManager.delegate = self
@@ -93,6 +92,7 @@ final class ViewController: UIViewController, ARSCNViewDelegate, CLLocationManag
         // sceneView 설정
         sceneView.delegate = self
         sceneView.showsStatistics = true
+        sceneView.layer.zPosition = 0
         
         pointCloudRenderer = Renderer(
             session: sceneView.session,
@@ -101,22 +101,6 @@ final class ViewController: UIViewController, ARSCNViewDelegate, CLLocationManag
         pointCloudRenderer.drawRectResized(size: sceneView.bounds.size)
         
         // Set the view to use the default device
-        
-        
-//        if let view = view as? MTKView {
-//            view.device = device
-//
-//            view.backgroundColor = UIColor.clear
-//            // we need this to enable depth test
-//            view.autoResizeDrawable = true
-//            view.depthStencilPixelFormat = .depth32Float
-//            view.contentScaleFactor = 1
-//            view.delegate = self
-//
-//            // Configure the renderer to draw to the view
-//            renderer = Renderer(session: session, metalDevice: device, renderDestination: view)
-//            renderer.drawRectResized(size: view.bounds.size)
-//        }
         
         self.debugImageView.layer.zPosition = 1
         
@@ -144,12 +128,14 @@ final class ViewController: UIViewController, ARSCNViewDelegate, CLLocationManag
         
         let stackView = UIStackView(arrangedSubviews: [rosControllerViewProvider.view!, confidenceControl, rgbRadiusSlider])
         stackView.isHidden = !isUIEnabled
+        stackView.layer.zPosition = 2
         stackView.translatesAutoresizingMaskIntoConstraints = false
         stackView.axis = .vertical
-        stackView.spacing = 20
+        stackView.spacing = 30
         
         sceneView.addSubview(stackView)
         sceneView.addSubview(controlsButton)
+        sceneView.bringSubviewToFront(stackView)
         
         NSLayoutConstraint.activate([
             stackView.centerXAnchor.constraint(equalTo: view.centerXAnchor),
@@ -162,7 +148,6 @@ final class ViewController: UIViewController, ARSCNViewDelegate, CLLocationManag
         
         bufferSize.width = view.bounds.width
         bufferSize.height = view.bounds.height
-        print(bufferSize.width, bufferSize.height)
         
         detectionOverlay = CALayer() // container layer that has all the renderings of the observations
         detectionOverlay.name = "DetectionOverlay"
@@ -179,34 +164,18 @@ final class ViewController: UIViewController, ARSCNViewDelegate, CLLocationManag
         updateLayerGeometry()
         setupVision()
         
-        print("view bounds \(view.bounds)")
-        
         loopCoreMLUpdate()
         
-        let boundingBox = BoundingBox(sceneView)
-        self.boundingBox = boundingBox
-        self.sceneView.scene.rootNode.addChildNode(boundingBox)
+        self.boundingBox1 = BoundingBox(sceneView)
+        self.sceneView.scene.rootNode.addChildNode(self.boundingBox1!)
     }
     
     func updateOnEveryFrame() {
         
         renderedPoints = self.sceneView.session.currentFrame?.rawFeaturePoints?.points ?? []
         
-        print("rawFeaturePoints : \(renderedPoints.count)")
-        
-        //renderedPreliminaryPoints = []
-        
         // Abort if the bounding box has no extent yet
-        guard boundingBox!.extent.x > 0 else { return }
-        
-        // Check which of the reference object's points and current frame's points are within the bounding box.
-        // Note: The creation of the latest ARReferenceObject happens at a lower frequency
-        //       than rendering and updates of the bounding box, so some of the points
-        //       may no longer be inside of the box.
-        
-        //renderedPoints = referenceObjectPoints.filter { boundingBox!.contains($0) }
-        //print("renderedPoints : \(renderedPoints.count)")
-        //renderedPreliminaryPoints = currentFramePoints.filter { boundingBox!.contains($0) }
+        guard boundingBox1!.extent.x > 0 else { return }
         
         self.pointNode.geometry = createVisualization(for: renderedPoints, color: UIColor(displayP3Red: 23/255, green: 234/255, blue: 103/255, alpha: 1), size: 12)
         
@@ -223,23 +192,32 @@ final class ViewController: UIViewController, ARSCNViewDelegate, CLLocationManag
         do {
             let selectedModel = try VNCoreMLModel(for: MLModel(contentsOf: modelURL))
             let classificationRequest = VNCoreMLRequest(model: selectedModel,  completionHandler: { (request, error) in
-                DispatchQueue.main.async(execute: {
+                DispatchQueue.main.async(execute: { [self] in
                     // perform all the UI updates on the main queue
                     if let results = request.results {
                         self.drawVisionRequestResults(results)
                         
                         if let points = self.sceneView.session.currentFrame?.rawFeaturePoints {
                             // Automatically adjust the size of the bounding box.
-                            //print("point 0 \(points.points[0])")
                             
-                            let simdPosition = self.pointCloudRenderer.centerPoint
+                            var simdPosition = self.pointCloudRenderer.centerPoint
                             let localMin = self.pointCloudRenderer.localMin
                             let localMax = self.pointCloudRenderer.localMax
-                            print("max \(localMax)")
-                            print("min \(localMin)")
-                            print("extent : \(localMax - localMin)")
-                            self.boundingBox?.simdPosition = simdPosition
-                            self.boundingBox?.fitOverPointCloud(points, focusPoint: simdPosition)
+                            let localWidth = (self.pointCloudRenderer.objectDetectionBuffer[0].w - self.pointCloudRenderer.objectDetectionBuffer[0].x) / 1920
+                            let localHeight = (self.pointCloudRenderer.objectDetectionBuffer[0].h - self.pointCloudRenderer.objectDetectionBuffer[0].y) / 1440
+
+                            guard let arCamera = self.sceneView.session.currentFrame?.camera else { return }
+                            
+                            self.boundingBox1?.eulerAngles = SCNVector3(0, arCamera.eulerAngles.y, 0);
+                            
+                            // publish
+                            self.obstacle_depth = self.pointCloudRenderer.localDepth
+                            self.obstacle_width = localWidth
+                            
+                            self.boundingBox1?.simdPosition = simdPosition
+                            //self.boundingBox1?.simdPosition = self.pointCloudRenderer.localDepthMid
+                            self.boundingBox1?.extent = SIMD3(x: localWidth, y: localHeight, z:localWidth)
+                            //self.boundingBox1?.fitOverPointCloud(points.points, focusPoint: simdPosition)
                         }
                         
                         if let imageBuffer = self.sceneView.session.currentFrame?.capturedImage {
@@ -299,7 +277,7 @@ final class ViewController: UIViewController, ARSCNViewDelegate, CLLocationManag
     @objc
     private func viewValueChanged(view: UIView) {
         switch view {
-            
+        
         case confidenceControl:
             pointCloudRenderer.confidenceThreshold = confidenceControl.selectedSegmentIndex
             
@@ -359,19 +337,17 @@ final class ViewController: UIViewController, ARSCNViewDelegate, CLLocationManag
                 lastLabel = topLabelObservation.identifier;
                 //self.boundingBox = BoundingBox(sceneView);
             }
-                
+            
             let objectBounds = VNImageRectForNormalizedRect(objectObservation.boundingBox, Int(bufferSize.width), Int(bufferSize.height))
             pointCloudRenderer.objectDetectionBuffer[0] = BboxInfo(x: Float(objectBounds.minX), y: Float(objectBounds.minY), w: Float(objectBounds.maxX), h: Float(objectBounds.maxY))
             
-            //print("bounds : \(renderer.objectDetectionBuffer[0])")
             let shapeLayer = self.createRoundedRectLayerWithBounds(objectBounds)
             
             let textLayer = self.createTextSubLayerInBounds(objectBounds,
                                                             identifier: topLabelObservation.identifier,
                                                             confidence: topLabelObservation.confidence)
             
-            self.debugTextView.text = String(format: "\(topLabelObservation.identifier) - Confidence:  %.2f", topLabelObservation.confidence)
-            
+            self.debugTextView.text = String(format: "\(topLabelObservation.identifier) - Confidence:  %.2f\n\(self.pointCloudRenderer.localDepth)M", topLabelObservation.confidence)
             shapeLayer.addSublayer(textLayer)
             
             //draw yolo bbox
@@ -380,7 +356,7 @@ final class ViewController: UIViewController, ARSCNViewDelegate, CLLocationManag
             
         }
         
-        self.updateLayerGeometry()
+        //self.updateLayerGeometry()
         CATransaction.commit()
         
     }
@@ -402,24 +378,17 @@ final class ViewController: UIViewController, ARSCNViewDelegate, CLLocationManag
         
         var classifications = ""
         
-        //print(results[0].confidence)
-        
         for case let foundObject as VNRecognizedObjectObservation in results {
             let bestLabel = foundObject.labels.first! // Label with highest confidence
             let objectBounds = foundObject.boundingBox // Normalized between [0,1]
             let confidence = foundObject.confidence // Confidence for the predicted class
 
-            // Use the computed values.
-            print(bestLabel.identifier, confidence, objectBounds)
             classifications.append("\(bestLabel.identifier) \(String(format:"- %.2f", confidence)) \n")
         }
         
         
         DispatchQueue.main.async {
             // Array to store final predictions (after post-processing)
-
-            // Print Classifications
-            print("--")
             
             // Display Debug Text on screen
             var debugText:String = ""
@@ -468,10 +437,14 @@ final class ViewController: UIViewController, ARSCNViewDelegate, CLLocationManag
         //CGFloat(.pi / 3.0) : 1.04
         
        
-        //detectionOverlay.setAffineTransform(CGAffineTransform(rotationAngle: CGFloat(0.0)))
+        detectionOverlay.setAffineTransform(CGAffineTransform(rotationAngle: 0.0) .scaledBy(x: 1.0, y: -1.0))
         // center the layer
         // 여기?
         detectionOverlay.position = CGPoint(x: bounds.midX, y: bounds.midY)
+        //detectionOverlay.frame.
+        //pointCloudRenderer.objectDetectionBuffer[0] = BboxInfo(x: Float(detectionOverlay.frame.minX), y: Float(detectionOverlay.frame.minY), w: Float(detectionOverlay.frame.maxX), h: Float(detectionOverlay.frame.maxY))
+        
+        
         //print("layout position : \(detectionOverlay.bounds.width) \(detectionOverlay.bounds.height) \(detectionOverlay.position.x) \(detectionOverlay.position.y) ")
         
         // detectionOverlay.bounds.width 1194
@@ -501,6 +474,7 @@ final class ViewController: UIViewController, ARSCNViewDelegate, CLLocationManag
         //shapeLayer.backgroundColor = CGColor(colorSpace: CGColorSpaceCreateDeviceRGB(), components: [1.0, 1.0, 0.2, 0.4])
         textLayer.contentsScale = 2.0 // retina rendering
         // rotate the layer into screen orientation and scale and mirror
+        textLayer.setAffineTransform(CGAffineTransform(rotationAngle: CGFloat(0.0)).scaledBy(x: 1.0, y: -1.0))
         //textLayer.setAffineTransform(CGAffineTransform(rotationAngle: CGFloat(0.0)).scaledBy(x: 1.0, y: -1.0))
         return textLayer
     }
@@ -534,8 +508,6 @@ final class ViewController: UIViewController, ARSCNViewDelegate, CLLocationManag
         let pixbuff : CVPixelBuffer? = (self.sceneView.session.currentFrame?.capturedImage)
         if pixbuff == nil { return }
         let ciImage = CIImage(cvPixelBuffer: pixbuff!)
-    
-        //print(CVPixelBufferGetWidth(session.currentFrame?.capturedImage), CVPixelBufferGetHeight(session.currentFrame?.capturedImage))
         
 
         // Note: Not entirely sure if the ciImage is being interpreted as RGB, but for now it works with the Inception model.
@@ -561,7 +533,7 @@ final class ViewController: UIViewController, ARSCNViewDelegate, CLLocationManag
     func renderer(_ renderer: SCNSceneRenderer, didRenderScene scene: SCNScene, atTime time: TimeInterval) {
         pointCloudRenderer.draw()
         updateOnEveryFrame()
-        self.boundingBox?.updateVisualization()
+        self.boundingBox1?.updateVisualization()
     }
     
     func createVisualization(for points: [SIMD3<Float>], color: UIColor, size: CGFloat) -> SCNGeometry? {

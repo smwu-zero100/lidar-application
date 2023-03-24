@@ -19,6 +19,7 @@ final class PubController {
         case pointCloud
         case camera
         case location
+        case obstacle
     }
     public static let defaultRate = 10.0
     
@@ -39,7 +40,8 @@ final class PubController {
             .depth: PubController.defaultRate,
             .pointCloud: PubController.defaultRate,
             .camera: PubController.defaultRate,
-            .location: PubController.defaultRate
+            .location: PubController.defaultRate,
+            .obstacle: PubController.defaultRate
         ]
     }
     

@@ -97,8 +97,8 @@ vertex void unprojectVertex(uint vertexID [[vertex_id]],
     const auto h = bboxinfo[0].h * b; // max_y
     
     // Write the data to the buffer
-    if((loc_position.x <= w) && (loc_position.y <= h) && (loc_position.x <= 1920) && (loc_position.y <= 1440)) {
-        if((x <= loc_position.x) && (y <= loc_position.y) && (x >= 0) && (y >= 0)) {
+    if((loc_position.x <= w) && (loc_position.y <= (1440-y)) && (loc_position.x <= 1920) && (loc_position.y <= 1440)) {
+        if((x <= loc_position.x) && ((1440-h) <= loc_position.y) && (x >= 0) && (y >= 0)) {
             particleUniforms[currentPointIndex].color = simd_float3(255, 0, 0);
             //obstacleInfo[0].position = position.xyz;
             

@@ -111,10 +111,7 @@ struct sensor_msgs__NavSatFix:RosMsg{
     static let COVARIANCE_TYPE_APPROXIMATED = 1
     static let COVARIANCE_TYPE_DIAGONAL_KNOWN = 2
     static let COVARIANCE_TYPE_KNOWN = 3
-    
-    
 }
-
 
 /// geometry_msgs/Vector3
 struct geometry_msgs__Vector3: RosMsg {
@@ -147,4 +144,11 @@ struct geometry_msgs__TransformStamped: RosMsg {
 /// tf2_msgs/TFMessage
 struct tf2_msgs__TFMessage: RosMsg {
     var transforms: [geometry_msgs__TransformStamped]
+}
+
+/// sensor_msgs/Obstacle
+struct sensor_msgs__Obstacle: RosMsg {
+    var header: std_msgs__Header
+    var width: Float
+    var depth: Float
 }

@@ -3,7 +3,7 @@ import SceneKit
 
 class Wireframe: SCNNode {
     
-    private var color = UIColor(displayP3Red: 0/255, green: 0/255, blue: 0/255, alpha: 1)
+    private var color = UIColor(displayP3Red: 1.0, green: 0.0, blue: 0.0, alpha: 1)
     
     var isHighlighted: Bool = false {
         didSet {

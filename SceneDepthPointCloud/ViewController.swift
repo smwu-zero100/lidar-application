@@ -44,7 +44,7 @@ final class ViewController: UIViewController, ARSCNViewDelegate, CLLocationManag
     var latestPrediction : String = "…"
     var lastLabel: String = ""
     var obstacle_width:Float = 0.0
-    var model_name = "YOLOv3TinyInt8LUT"
+    var model_name = "yolov5_FP16"
     var rootLayer: CALayer! = nil
     var detectionOverlay: CALayer! = nil
     // Vision parts
@@ -149,7 +149,7 @@ final class ViewController: UIViewController, ARSCNViewDelegate, CLLocationManag
         loopCoreMLUpdate()
         
         self.boundingBox1 = BoundingBox(sceneView)
-        self.sceneView.scene.rootNode.addChildNode(self.boundingBox1!)
+        //self.sceneView.scene.rootNode.addChildNode(self.boundingBox1!)
     }
     
     func updateOnEveryFrame() {
@@ -419,7 +419,7 @@ final class ViewController: UIViewController, ARSCNViewDelegate, CLLocationManag
     func createTextSubLayerInBounds(_ bounds: CGRect, identifier: String, confidence: VNConfidence) -> CATextLayer {
         let textLayer = CATextLayer()
         textLayer.name = "Object Label"
-        let formattedString = NSMutableAttributedString(string: String(format: "\(identifier)- Confidence:  %.2f \n x1: \(bounds.minX) \n y1 : \(bounds.minY) \n x2: \(bounds.maxX) \n y2: \(bounds.maxY)", confidence))
+        let formattedString = NSMutableAttributedString(string: String(format: "\(identifier)\n- Confidence:  %.2f \n x1: \(bounds.minX) \n y1 : \(bounds.minY) \n x2: \(bounds.maxX) \n y2: \(bounds.maxY)", confidence))
         
         let largeFont = UIFont(name: "Helvetica", size: 24.0)!
         formattedString.addAttributes([NSAttributedString.Key.font: largeFont], range: NSRange(location: 0, length: identifier.count))

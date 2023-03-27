@@ -3,7 +3,7 @@ import ARKit
 
 class DetectedBoundingBox: SCNNode {
     
-    init(points: [SIMD3<Float>], scale: CGFloat, color: UIColor = UIColor(displayP3Red: 0/255, green: 0/255, blue: 0/255, alpha: 1)) {
+    init(points: [SIMD3<Float>], scale: CGFloat, color: UIColor = UIColor(displayP3Red: 1.0, green: 0, blue: 0, alpha: 1)) {
         super.init()
         
         var localMin = SIMD3<Float>(repeating: Float.greatestFiniteMagnitude)

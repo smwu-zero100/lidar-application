@@ -38,7 +38,7 @@ class BoundingBox: SCNNode {
     private var sidesNode = SCNNode()
     private var sides: [BoundingBoxSide.Position: BoundingBoxSide] = [:]
     
-    private var color = UIColor(red:159/255, green: 203/255, blue: 109/255, alpha: 1)
+    private var color = UIColor(red:1.0, green: 0.0, blue: 0.0, alpha: 1)
     
     private var cameraRaysAndHitLocations: [(ray: Ray, hitLocation: SIMD3<Float>)] = []
     private var frameCounter: Int = 0
@@ -117,7 +117,7 @@ class BoundingBox: SCNNode {
     private func updateWireframe() {
         // When this method is called the first time, create the wireframe and add them as child node.
         guard let wireframe = self.wireframe else {
-            let wireframe = Wireframe(extent: self.extent, color: UIColor(ciColor: CIColor(red: 102, green: 49, blue: 255)))
+            let wireframe = Wireframe(extent: self.extent, color: UIColor(ciColor: CIColor(red: 1.0, green: 0.0, blue: 0.0)))
             self.addChildNode(wireframe)
             self.wireframe = wireframe
             return

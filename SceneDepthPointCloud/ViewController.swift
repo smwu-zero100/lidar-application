@@ -44,7 +44,7 @@ final class ViewController: UIViewController, ARSCNViewDelegate, CLLocationManag
     var latestPrediction : String = "…"
     var lastLabel: String = ""
     var obstacle_width:Float = 0.0
-    var model_name = "yolov5_FP16"
+    var model_name = "YOLOv3TinyInt8LUT"
     var rootLayer: CALayer! = nil
     var detectionOverlay: CALayer! = nil
     // Vision parts
@@ -149,7 +149,7 @@ final class ViewController: UIViewController, ARSCNViewDelegate, CLLocationManag
         loopCoreMLUpdate()
         
         self.boundingBox1 = BoundingBox(sceneView)
-        //self.sceneView.scene.rootNode.addChildNode(self.boundingBox1!)
+        self.sceneView.scene.rootNode.addChildNode(self.boundingBox1!)
     }
     
     func updateOnEveryFrame() {
@@ -337,6 +337,8 @@ final class ViewController: UIViewController, ARSCNViewDelegate, CLLocationManag
                                                             confidence: topLabelObservation.confidence)
         
             shapeLayer.addSublayer(textLayer)
+            
+            self.debugTextView.text = String(format: "\(topLabelObservation.identifier) \n- Confidence: %.2f \n Distance : %.2fM", topLabelObservation.confidence, self.pointCloudRenderer._min)
             
             //draw yolo bbox
             detectionOverlay.addSublayer(shapeLayer)

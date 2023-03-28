@@ -37,7 +37,7 @@ class BoundingBoxSide: SCNNode {
     
     // The tiles of this side.
     
-    private var color = UIColor(displayP3Red: 0/255, green: 0/255, blue: 0/255, alpha: 1)
+    private var color = UIColor(displayP3Red: 1.0, green: 0, blue: 0, alpha: 1)
     
     // Maximum width or height of a tile. If the size of the side exceeds this value, a new row or column is added.
     private var maxTileSize: CGFloat = 0.1
@@ -72,8 +72,7 @@ class BoundingBoxSide: SCNNode {
 //        return Float(capturedTiles.count) / Float(tiles.count)
 //    }
     
-    init(_ face: Position, boundingBoxExtent extent: SIMD3<Float>, color: UIColor = UIColor(named: "appYellow")!) {
-        self.color = color
+    init(_ face: Position, boundingBoxExtent extent: SIMD3<Float>) {
         self.face = face
         super.init()
         

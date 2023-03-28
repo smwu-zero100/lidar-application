@@ -17,12 +17,12 @@ float closest = distance - bBoxDiag / 2.0;
 float furthest = distance + bBoxDiag / 2.0;
 float distFromPointOfView = length(_surface.position);
 float normalizedDistance = 1 - ((distFromPointOfView - closest) / (furthest - closest));
-_surface.transparent.a = clamp(normalizedDistance, 0.0, 1.0);
+_surface.transparent.a = clamp(0.9, 0.0, 1.0);
 
 ////////////////////////////////////////////////////////////////
 // Render only a wireframe
 ////////////////////////////////////////////////////////////////
-float lineThickness = 0.01;
+float lineThickness = 0.02;
 float u = _surface.diffuseTexcoord.x;
 float v = _surface.diffuseTexcoord.y;
 
@@ -37,7 +37,7 @@ if (abs((scn_node.inverseModelViewTransform * float4(_surface.normal, 0.0)).x) >
 }
 
 // Compute threshold for discarding rendering
-float2 thresh = float2(lineThickness) / scale;
+float2 thresh = float2(lineThickness);
 if (u > thresh[0] && u < (1.0 - thresh[0]) && v > thresh[1] && v < (1.0 - thresh[1])) {
     discard_fragment();
 }

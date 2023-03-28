@@ -111,7 +111,27 @@ class BoundingBox: SCNNode {
     }
     
     func updateVisualization() {
+        self.updateSides()
         self.updateWireframe()
+    }
+    
+    private func updateSides() {
+        // When this method is called the first time, create the sides and add them to the sidesNode.
+        guard sides.count == 6 else {
+            createSides()
+            self.addChildNode(sidesNode)
+            return
+        }
+        
+        // Otherwise just update the geometries's size and position.
+        sides.forEach { $0.value.update(boundingBoxExtent: self.extent) }
+    }
+    
+    private func createSides() {
+        for position in BoundingBoxSide.Position.allCases {
+            self.sides[position] = BoundingBoxSide(position, boundingBoxExtent: self.extent)
+            self.sidesNode.addChildNode(self.sides[position]!)
+        }
     }
     
     private func updateWireframe() {
@@ -134,6 +154,7 @@ class BoundingBox: SCNNode {
             $0.value.hideZAxisExtensions()
         }
     }
+    
     
     func isHit(screenPos: CGPoint) -> Bool {
         let hitResults = sceneView.hitTest(screenPos, options: [
